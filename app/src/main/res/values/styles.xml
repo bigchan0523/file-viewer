@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="toolbar">#FFFFFF</color>
+    <color name="page_bg">#EEF0F3</color>
+    <color name="icon_bg">#2F6BFF</color>
+    <color name="ink">#1D2129</color>
+    <color name="sub">#6B7280</color>
+
+    <style name="AppTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/toolbar</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/page_bg</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowBackground">@color/page_bg</item>
+        <item name="android:colorAccent">@color/icon_bg</item>
+    </style>
+</resources>

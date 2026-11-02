@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">파일 뷰어</string>
+    <string name="home">처음 화면</string>
+    <string name="open">파일 열기</string>
+    <string name="share">공유</string>
+</resources>

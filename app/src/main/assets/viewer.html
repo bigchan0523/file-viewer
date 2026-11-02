@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=6, user-scalable=yes">
+<title>파일 뷰어</title>
+<style>
+  :root { --bg:#eef0f3; --card:#fff; --ink:#1d2129; --sub:#6b7280; --line:#eceef1; --accent:#2f6bff; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--ink);
+    font-family: system-ui, -apple-system, "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+    -webkit-tap-highlight-color: transparent; }
+
+  /* ---------- 처음 화면 ---------- */
+  #home { max-width:640px; margin:0 auto; padding:24px 16px 40px; }
+  .hero { text-align:center; padding:12px 0 22px; }
+  .hero .logo { width:64px; height:64px; margin:0 auto 12px; border-radius:18px; background:var(--accent);
+    display:flex; align-items:center; justify-content:center; }
+  .hero h1 { font-size:21px; margin:0 0 6px; }
+  .hero p { margin:0; color:var(--sub); font-size:14px; }
+  #openBtn { width:100%; padding:16px; border:0; border-radius:14px; background:var(--accent); color:#fff;
+    font-size:17px; font-weight:700; font-family:inherit; }
+  #openBtn:active { filter:brightness(.92); }
+  .kinds { display:flex; gap:8px; justify-content:center; margin-top:12px; }
+  .chip { font-size:12px; padding:4px 10px; border-radius:999px; background:#fff; color:var(--sub); }
+  .section { margin:28px 4px 10px; font-size:14px; color:var(--sub); font-weight:700; }
+  #recent { background:var(--card); border-radius:14px; overflow:hidden; }
+  .item { display:flex; align-items:center; gap:12px; padding:13px 10px 13px 14px; border-bottom:1px solid var(--line); }
+  .item:last-child { border-bottom:0; }
+  .item:active { background:#f6f7f9; }
+  .badge { flex:none; width:42px; height:42px; border-radius:11px; display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:800; color:#fff; letter-spacing:.3px; }
+  .badge.pdf { background:#e5484d; } .badge.hwp { background:var(--accent); } .badge.etc { background:#8b95a1; }
+  .meta { flex:1; min-width:0; }
+  .name { font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .time { font-size:12px; color:var(--sub); margin-top:3px; }
+  .del { flex:none; border:0; background:none; color:#b0b6bf; font-size:22px; line-height:1; padding:6px 8px; }
+  .empty { padding:30px 16px; text-align:center; color:var(--sub); font-size:14px; line-height:1.6; }
+  .foot { margin-top:26px; text-align:center; color:#9aa1ab; font-size:11.5px; line-height:1.6; }
+
+  /* ---------- 문서 ---------- */
+  #pages { padding:8px 0 28px; }
+  .page { position:relative; margin:0 auto 10px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.16); overflow:hidden; }
+  .page > canvas, .page > svg { display:block; width:100%; height:100%; }
+
+  /* ---------- 상태 ---------- */
+  #status { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:14px; padding:24px; color:var(--sub); font-size:15px; text-align:center; }
+  .spinner { width:34px; height:34px; border:3px solid #d5d9e0; border-top-color:var(--accent); border-radius:50%;
+    animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .big { font-size:42px; }
+  .err { max-width:520px; color:#b42318; font-size:12.5px; white-space:pre-wrap; word-break:break-all; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="home" hidden>
+  <div class="hero">
+    <div class="logo">
+      <svg width="34" height="34" viewBox="0 0 24 24"><path fill="#fff" d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm8 1.5V8h4.5L14 3.5zM7 12v1.6h10V12H7zm0 3.4V17h10v-1.6H7zm0 3.4V20h6v-1.2H7z"/></svg>
+    </div>
+    <h1>광고 없는 파일 뷰어</h1>
+    <p>폰 안에서만 열고, 인터넷으로 아무것도 안 보내요</p>
+  </div>
+  <button id="openBtn">파일 열기</button>
+  <div class="kinds"><span class="chip">PDF</span><span class="chip">HWP</span><span class="chip">HWPX</span></div>
+  <div class="section">최근 파일</div>
+  <div id="recent"></div>
+  <div class="foot">PDF 표시: pdf.js (Apache-2.0) · 한글 표시: rhwp (MIT)</div>
+</div>
+
+<div id="pages"></div>
+<div id="status" hidden></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
