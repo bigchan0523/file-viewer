@@ -881,6 +881,8 @@ async function openPptx(buf) {
 let fillMod = null;
 window.toggleFill = async () => {
   if (D.toggleEdit) { D.toggleEdit(); return; }
+  // 한글: 진짜 편집 모드(편집기 화면)로
+  if (D.kind === 'hwp') { location.href = `hwpedit.html?doc=${encodeURIComponent(docId)}&name=${encodeURIComponent(docName)}`; return; }
   try {
     fillMod ||= await import('./fill.js');
     fillMod.toggle(D, A);

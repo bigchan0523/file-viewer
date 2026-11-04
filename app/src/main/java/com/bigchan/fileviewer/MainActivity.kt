@@ -8,6 +8,13 @@ import android.util.Base64
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.CancellationSignal
+import android.os.ParcelFileDescriptor
+import android.print.PageRange
+import android.print.PrintAttributes
+import android.print.PrintDocumentAdapter
+import android.print.PrintDocumentInfo
+import android.print.PrintManager
 import android.provider.OpenableColumns
 import android.view.View
 import android.webkit.JavascriptInterface
@@ -45,6 +52,7 @@ class MainActivity : Activity() {
     private lateinit var shareBtn: ImageButton
     private lateinit var editBtn: ImageButton
     private var pendingSave: ByteArray? = null
+    private var openAfterSave = true
 
     /** 웹 쪽에서 /doc/<id> 로 요청하면 이 표에서 실제 파일 Uri를 찾아 넘겨줌 */
     private val docs = HashMap<String, Uri>()
@@ -175,8 +183,7 @@ class MainActivity : Activity() {
                 contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes) }
                     ?: throw IOException("no stream")
                 web.evaluateJavascript("window.onSaved && onSaved(true)", null)
-                toast("저장했어요")
-                openDoc(uri)
+                if (openAfterSave) { toast("저장했어요"); openDoc(uri) }
             } catch (e: Exception) {
                 web.evaluateJavascript("window.onSaved && onSaved(false)", null)
                 toast("저장하지 못했어요")
@@ -409,7 +416,12 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface
-        fun saveFile(name: String, mime: String, base64: String) = runOnUiThread {
+        fun saveFile(name: String, mime: String, base64: String) = saveFile2(name, mime, base64, true)
+
+        /** openAfter=false 면 저장 후 지금 화면에 그대로 머무름 (편집기용) */
+        @JavascriptInterface
+        fun saveFile2(name: String, mime: String, base64: String, openAfter: Boolean) = runOnUiThread {
+            openAfterSave = openAfter
             try {
                 pendingSave = Base64.decode(base64, Base64.DEFAULT)
                 val i = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
@@ -424,6 +436,46 @@ class MainActivity : Activity() {
                 toast("저장 창을 열 수 없어요")
                 web.evaluateJavascript("window.onSaved && onSaved(false)", null)
             }
+        }
+
+        @JavascriptInterface
+        fun shareFile(name: String, mime: String, base64: String) = runOnUiThread {
+            try {
+                val dir = File(cacheDir, "share").apply { mkdirs(); listFiles()?.forEach { it.delete() } }
+                val safe = name.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                val f = File(dir, safe)
+                f.writeBytes(Base64.decode(base64, Base64.DEFAULT))
+                val uri = FileProvider.getUriForFile(this@MainActivity, "$packageName.files", f)
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = mime
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                startActivity(Intent.createChooser(send, "공유"))
+            } catch (e: Exception) { toast("공유할 수 없어요") }
+        }
+
+        @JavascriptInterface
+        fun printPdf(name: String, base64: String) = runOnUiThread {
+            try {
+                val bytes = Base64.decode(base64, Base64.DEFAULT)
+                val pm = getSystemService(PRINT_SERVICE) as PrintManager
+                pm.print(name, object : PrintDocumentAdapter() {
+                    override fun onLayout(old: PrintAttributes?, new: PrintAttributes?, cancel: CancellationSignal?,
+                                          cb: LayoutResultCallback, extras: Bundle?) {
+                        if (cancel?.isCanceled == true) { cb.onLayoutCancelled(); return }
+                        cb.onLayoutFinished(PrintDocumentInfo.Builder("$name.pdf")
+                            .setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT).build(), true)
+                    }
+                    override fun onWrite(pages: Array<out PageRange>?, dest: ParcelFileDescriptor,
+                                         cancel: CancellationSignal?, cb: WriteResultCallback) {
+                        try {
+                            java.io.FileOutputStream(dest.fileDescriptor).use { it.write(bytes) }
+                            cb.onWriteFinished(arrayOf(PageRange.ALL_PAGES))
+                        } catch (e: Exception) { cb.onWriteFailed(e.message) }
+                    }
+                }, null)
+            } catch (e: Exception) { toast("인쇄할 수 없어요") }
         }
 
         @JavascriptInterface

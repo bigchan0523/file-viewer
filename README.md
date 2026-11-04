@@ -5,7 +5,8 @@
 - 파일 앱·카톡에서 **다른 앱으로 열기 → 파일 뷰어** 또는 **공유하기 → 파일 뷰어**
 - 앱 안에서 **파일 열기**, **최근 파일** 목록
 - 두 손가락으로 확대/축소, 상단에 쪽 번호 표시, 원본 공유
-- PDF·한글 서류 채우기 (연필 버튼 → 글자/체크/서명 → 새 PDF로 저장)
+- 연필 버튼: 한글은 편집 모드(rhwp-studio), TXT·엑셀·CSV는 바로 고치기, PDF는 글자/체크/서명 채우기
+- 한글 편집 메뉴: 저장, PDF로 내보내기, 다른 이름으로 저장, HWP/HWPX로 내보내기, 공유, 인쇄, 문서 정보
 - 문서는 폰 안에서만 그려지고, 앱은 인터넷 요청을 전부 막음
 
 ## 설치
@@ -27,3 +28,6 @@
 - [rhwp](https://github.com/edwardkim/rhwp) — MIT
 - [SheetJS](https://sheetjs.com) — Apache-2.0
 - [pdf-lib](https://github.com/Hopding/pdf-lib) — MIT
+- [docx-preview](https://github.com/VolodymyrBaydalka/docxjs) — Apache-2.0
+- [pptx-renderer](https://www.npmjs.com/package/@aiden0z/pptx-renderer) — Apache-2.0
+- rhwp-studio / @rhwp/editor — MIT

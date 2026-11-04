@@ -117,6 +117,9 @@ rm -rf "$STUDIO_OUT"
   cd rhwp/rhwp-studio
   npm install --no-audit --no-fund 2>&1 | tail -3
   RHWP_WITHOUT_HWPCTRL=1 npx vite build --base=./ --outDir "$STUDIO_OUT" --emptyOutDir 2>&1 | tail -40
+  # 앱에 필요 없는 것 정리 (예제 문서, 오프라인 캐시용 서비스워커)
+  rm -rf "$STUDIO_OUT/samples" "$STUDIO_OUT/sw.js" "$STUDIO_OUT"/workbox-*.js "$STUDIO_OUT/registerSW.js" "$STUDIO_OUT/manifest.webmanifest"
+  sed -i -e '/registerSW\.js/d' -e '/manifest\.webmanifest/d' "$STUDIO_OUT/index.html"
   echo "===== studio out ====="
   ls -la "$STUDIO_OUT" 2>&1 | head -30
   du -sh "$STUDIO_OUT" 2>&1
