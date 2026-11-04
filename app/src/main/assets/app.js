@@ -101,8 +101,10 @@ async function openDoc() {
     }
     else if (kind === 'sheet' || kind === 'csv') await openSheet(buf, kind);
     else if (kind === 'text') openText(buf);
-    else if (kind === 'office') showError('워드·PPT는 아직 지원 안 해요. (PDF, 한글, 엑셀, TXT 가능)');
-    else showError('지원하지 않는 파일이에요. (PDF, 한글, 엑셀, TXT만 열 수 있어요)');
+    else if (kind === 'docx') await openDocx(buf);
+    else if (kind === 'pptx') await openPptx(buf);
+    else if (kind === 'office') showError('옛날 형식(doc·ppt)은 아직 못 열어요. docx·pptx로 저장된 파일은 열 수 있어요.');
+    else showError('지원하지 않는 파일이에요. (PDF, 한글, 워드, PPT, 엑셀, TXT)');
   } catch (e) {
     showError('문서를 표시하지 못했어요.', e);
   }
@@ -121,6 +123,8 @@ function detect(b, name) {
   if (ext === 'csv' || ext === 'tsv') return 'csv';
   if (SHEET_EXT.includes(ext)) return 'sheet';
   if (TEXT_EXT.includes(ext)) return 'text';
+  if (ext === 'docx' || ext === 'docm') return 'docx';
+  if (ext === 'pptx' || ext === 'ppsx' || ext === 'pptm') return 'pptx';
   // PDF: 앞쪽 1KB 안에 "%PDF"
   for (let i = 0; i < Math.min(b.length - 4, 1024); i++) {
     if (b[i] === 0x25 && b[i + 1] === 0x50 && b[i + 2] === 0x44 && b[i + 3] === 0x46) return 'pdf';
@@ -138,7 +142,8 @@ function detect(b, name) {
     if (tail.includes('xl/workbook') || head.includes('xl/')) return 'sheet';
     if (tail.includes('Contents/section')) return 'hwpx';
     if (tail.includes('opendocument.spreadsheet') || head.includes('opendocument.spreadsheet')) return 'sheet';
-    if (['docx', 'pptx'].includes(ext) || tail.includes('word/document') || tail.includes('ppt/presentation')) return 'office';
+    if (tail.includes('word/document')) return 'docx';
+    if (tail.includes('ppt/presentation')) return 'pptx';
     return 'hwpx';
   }
   if (ext === 'pdf') return 'pdf';
@@ -159,13 +164,88 @@ function looksLikeText(b) {
   return bad / n < 0.02;
 }
 
-/** UTF-8 / UTF-16 / EUC-KR(CP949) 자동 판별 */
+/** UTF-8 / UTF-16 / EUC-KR(CP949) 자동 판별 — 저장할 때 같은 인코딩으로 되돌리려고 D.enc 에 기록 */
 function decodeText(b) {
-  if (b[0] === 0xEF && b[1] === 0xBB && b[2] === 0xBF) return new TextDecoder('utf-8').decode(b.subarray(3));
-  if (b[0] === 0xFF && b[1] === 0xFE) return new TextDecoder('utf-16le').decode(b.subarray(2));
-  if (b[0] === 0xFE && b[1] === 0xFF) return new TextDecoder('utf-16be').decode(b.subarray(2));
-  try { return new TextDecoder('utf-8', { fatal: true }).decode(b); }
-  catch { return new TextDecoder('euc-kr').decode(b); }
+  let enc, text;
+  if (b[0] === 0xEF && b[1] === 0xBB && b[2] === 0xBF) { enc = 'utf-8-bom'; text = new TextDecoder('utf-8').decode(b.subarray(3)); }
+  else if (b[0] === 0xFF && b[1] === 0xFE) { enc = 'utf-16le'; text = new TextDecoder('utf-16le').decode(b.subarray(2)); }
+  else if (b[0] === 0xFE && b[1] === 0xFF) { enc = 'utf-16be'; text = new TextDecoder('utf-16be').decode(b.subarray(2)); }
+  else {
+    try { text = new TextDecoder('utf-8', { fatal: true }).decode(b); enc = 'utf-8'; }
+    catch { text = new TextDecoder('euc-kr').decode(b); enc = 'euc-kr'; }
+  }
+  D.enc = enc;
+  return text;
+}
+
+let eucMap = null;
+function encodeText(str, enc) {
+  if (enc === 'euc-kr') {
+    if (!eucMap) {
+      eucMap = new Map();
+      const dec = new TextDecoder('euc-kr'), two = new Uint8Array(2);
+      for (let a = 0x81; a <= 0xFE; a++) for (let b = 0x41; b <= 0xFE; b++) {
+        two[0] = a; two[1] = b;
+        const ch = dec.decode(two);
+        if (ch.length === 1 && ch !== '\uFFFD' && !eucMap.has(ch)) eucMap.set(ch, (a << 8) | b);
+      }
+    }
+    const out = [];
+    for (const ch of str) {
+      const c = ch.codePointAt(0);
+      if (c < 0x80) out.push(c);
+      else { const v = eucMap.get(ch); if (v) out.push(v >> 8, v & 255); else out.push(0x3F); }
+    }
+    return new Uint8Array(out);
+  }
+  if (enc === 'utf-16le' || enc === 'utf-16be') {
+    const le = enc === 'utf-16le';
+    const out = new Uint8Array(2 + str.length * 2);
+    out[0] = le ? 0xFF : 0xFE; out[1] = le ? 0xFE : 0xFF;
+    for (let i = 0; i < str.length; i++) {
+      const u = str.charCodeAt(i);
+      out[2 + i * 2] = le ? u & 255 : u >> 8;
+      out[3 + i * 2] = le ? u >> 8 : u & 255;
+    }
+    return out;
+  }
+  const u8 = new TextEncoder().encode(str);
+  if (enc !== 'utf-8-bom') return u8;
+  const out = new Uint8Array(u8.length + 3);
+  out.set([0xEF, 0xBB, 0xBF]); out.set(u8, 3);
+  return out;
+}
+
+// =================================================================== 저장 공통
+
+function toB64(u8) {
+  let s = '';
+  for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+let toastEl = null, toastTimer = 0;
+function toast(msg, ms = 2500) {
+  if (!toastEl) {
+    toastEl = document.createElement('div');
+    toastEl.id = 'toast';
+    document.body.appendChild(toastEl);
+  }
+  toastEl.textContent = msg;
+  toastEl.hidden = false;
+  clearTimeout(toastTimer);
+  if (ms) toastTimer = setTimeout(() => { toastEl.hidden = true; }, ms);
+}
+
+window.onSaved = (ok) => { if (ok) { window.__dirty = false; toast('저장했어요'); } };
+
+/** overwrite=true 면 원본에 덮어쓰기를 먼저 시도하고, 권한이 없으면 저장 위치를 고르게 함 */
+function saveBytes(bytes, { name, mime, overwrite }) {
+  const b64 = toB64(bytes);
+  window.__lastSaved = bytes; // 테스트용
+  if (overwrite && A.overwrite && A.overwrite(b64)) { window.__dirty = false; toast('원본에 저장했어요'); return; }
+  if (A.saveFile) A.saveFile(name, mime, b64);
+  else window.onSaved(true);
 }
 
 function pageWidth() {
@@ -416,7 +496,7 @@ async function openHwp(buf) {
 // =================================================================== 텍스트
 
 function openText(buf) {
-  const text = decodeText(buf);
+  let text = decodeText(buf);
   const CHUNK = 300000;
   let shown = 0;
   let size = 15;
@@ -454,6 +534,51 @@ function openText(buf) {
   const lines = text ? text.split('\n').length : 0;
   A.setPageInfo(`${lines.toLocaleString()}줄`);
   hideStatus();
+
+  // ---- 연필: 바로 고쳐 쓰기
+  D.kind = 'text';
+  let ta = null, ebar = null;
+  const exitEdit = () => {
+    ta?.remove(); ebar?.remove(); ta = ebar = null;
+    box.hidden = false; more.hidden = shown >= text.length;
+    document.body.classList.remove('editing');
+    A.setFillMode?.(false);
+  };
+  D.toggleEdit = () => {
+    if (ta) { if (window.__dirty && !confirm('저장 안 한 내용이 사라져요. 그만 고칠까요?')) return; window.__dirty = false; exitEdit(); return; }
+    ta = document.createElement('textarea');
+    ta.className = 'textedit';
+    ta.value = text;
+    ta.style.fontSize = size + 'px';
+    ta.spellcheck = false;
+    const grow = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 4 + 'px'; };
+    ta.addEventListener('input', () => { window.__dirty = true; grow(); });
+    box.hidden = true; more.hidden = true;
+    box.after(ta);
+    ebar = editBar([['cancel', '그만 고치기'], ['save', '저장', 'save']], (a) => {
+      if (a === 'cancel') D.toggleEdit();
+      else if (a === 'save') {
+        saveBytes(encodeText(ta.value, D.enc), { name: docName || '메모.txt', mime: 'text/plain', overwrite: true });
+        text = ta.value;
+        box.replaceChildren(); shown = 0; showMore();
+      }
+    });
+    document.body.classList.add('editing');
+    A.setFillMode?.(true);
+    grow();
+    ta.focus();
+  };
+  A.setFillable?.(true);
+}
+
+/** 화면 아래 고정 버튼줄 (텍스트·엑셀 수정용) */
+function editBar(buttons, onClick) {
+  const b = document.createElement('div');
+  b.id = 'editbar';
+  b.innerHTML = buttons.map(([a, label, cls]) => `<button data-a="${a}" class="${cls || ''}">${label}</button>`).join('');
+  b.onclick = (e) => { const t = e.target.closest('button'); if (t) onClick(t.dataset.a); };
+  document.body.appendChild(b);
+  return b;
 }
 
 // =================================================================== 엑셀 (xlsx / xls / csv / ods)
@@ -516,6 +641,8 @@ async function openSheet(buf, kind) {
 
   const STEP = 500, MAXCOL = 200;
   let cur = 0, rowsShown = STEP;
+  let editing = false;
+  D.kind = 'sheet';
 
   function colWidth(c) {
     if (!c || c.hidden) return c && c.hidden ? 0 : 84;
@@ -528,9 +655,11 @@ async function openSheet(buf, kind) {
     cellbar.hidden = true;
     for (const t of tabs.children) t.classList.toggle('on', +t.dataset.k === cur);
     A.setPageInfo(sheets.length > 1 ? `${cur + 1} / ${sheets.length} 시트` : '');
+    if (ws && !ws['!ref'] && editing) ws['!ref'] = 'A1:A1';
     if (!ws || !ws['!ref']) { holder.innerHTML = '<div class="empty">빈 시트예요</div>'; return; }
 
     const r = X.utils.decode_range(ws['!ref']);
+    if (editing) { r.s.r = r.s.c = 0; r.e.r += 20; r.e.c += 5; } // 수정 중엔 빈 칸도 조금 더 보여줌
     const lastRow = Math.min(r.e.r, r.s.r + rowsShown - 1);
     const lastCol = Math.min(r.e.c, r.s.c + MAXCOL - 1);
 
@@ -595,18 +724,163 @@ async function openSheet(buf, kind) {
     if (!td || td === sel) { sel = null; cellbar.hidden = true; return; }
     sel = td;
     td.classList.add('sel');
+    if (editing) { openCellEditor(td); return; }
     cellbar.innerHTML = `<b>${esc(td.dataset.a)}</b>${esc(td.textContent) || '<span style="opacity:.5">(빈 칸)</span>'}`;
     cellbar.hidden = false;
   };
 
+  // ---- 연필: 칸 값 고치기
+  function openCellEditor(td) {
+    const ws = wb.Sheets[sheets[cur].name];
+    const addr = td.dataset.a;
+    const cell = ws[addr];
+    const val = cell ? (cell.f ? '=' + cell.f : cell.w != null && cell.t !== 'n' ? cell.w : cell.v != null ? String(cell.v) : '') : '';
+    cellbar.innerHTML = `<div class="ced"><b>${esc(addr)}</b><textarea rows="1"></textarea><button>적용</button></div>`;
+    cellbar.hidden = false;
+    const inp = cellbar.querySelector('textarea');
+    inp.value = val;
+    inp.focus();
+    inp.select();
+    const apply = () => {
+      const v = inp.value;
+      if (v === val) { cellbar.hidden = true; return; }
+      setCell(ws, addr, v);
+      const c2 = ws[addr];
+      td.textContent = c2 ? (c2.f ? (c2.w ?? '') : c2.w ?? String(c2.v ?? '')) : '';
+      td.classList.toggle('num', !!c2 && c2.t === 'n');
+      window.__dirty = true;
+      cellbar.hidden = true;
+    };
+    cellbar.querySelector('button').onclick = apply;
+    inp.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); apply(); } };
+  }
+
+  function setCell(ws, addr, v) {
+    const t = v.trim();
+    if (t === '') delete ws[addr];
+    else if (t.startsWith('=') && kind !== 'csv') ws[addr] = { t: 'n', f: t.slice(1), v: 0, w: '' };
+    else if (/^-?\d+(\.\d+)?$/.test(t.replace(/,/g, '')) && !/^0\d/.test(t)) ws[addr] = { t: 'n', v: +t.replace(/,/g, ''), w: t };
+    else ws[addr] = { t: 's', v, w: v };
+    // 범위 밖이면 시트 범위 늘리기
+    const rg = X.utils.decode_range(ws['!ref'] || 'A1:A1');
+    const c = X.utils.decode_cell(addr);
+    rg.s.r = Math.min(rg.s.r, c.r); rg.s.c = Math.min(rg.s.c, c.c);
+    rg.e.r = Math.max(rg.e.r, c.r); rg.e.c = Math.max(rg.e.c, c.c);
+    ws['!ref'] = X.utils.encode_range(rg);
+  }
+
+  let ebar = null;
+  D.toggleEdit = () => {
+    if (editing) {
+      if (window.__dirty && !confirm('저장 안 한 내용이 사라져요. 그만 고칠까요?')) return;
+      if (window.__dirty) { location.reload(); return; } // 고친 내용 버리기
+      editing = false; ebar?.remove(); ebar = null;
+      document.body.classList.remove('editing');
+      A.setFillMode?.(false); draw(); return;
+    }
+    editing = true;
+    document.body.classList.add('editing');
+    A.setFillMode?.(true);
+    ebar = editBar([['cancel', '그만 고치기'], ['save', '저장', 'save']], (a) => {
+      if (a === 'cancel') D.toggleEdit();
+      else if (a === 'save') saveSheet();
+    });
+    draw();
+    toast('고칠 칸을 누르세요');
+  };
+
+  function saveSheet() {
+    cellbar.hidden = true;
+    const base = (docName || '표').replace(/\.[^.]+$/, '');
+    if (kind === 'csv') {
+      const ws = wb.Sheets[sheets[cur].name];
+      const csv = X.utils.sheet_to_csv(ws, ext === 'tsv' ? { FS: '\t' } : {});
+      saveBytes(encodeText(csv, D.enc), { name: docName || base + '.csv', mime: 'text/csv', overwrite: true });
+      return;
+    }
+    const bt = ext === 'xls' ? 'biff8' : ext === 'ods' ? 'ods' : ext === 'xlsm' ? 'xlsm' : 'xlsx';
+    const outExt = ext === 'xls' ? 'xls' : ext === 'ods' ? 'ods' : ext === 'xlsm' ? 'xlsm' : 'xlsx';
+    const mime = { xls: 'application/vnd.ms-excel', ods: 'application/vnd.oasis.opendocument.spreadsheet' }[outExt]
+      || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    const out = X.write(wb, { bookType: bt, type: 'array', cellStyles: true });
+    toast('엑셀은 글자색·칸 색 같은 서식이 빠질 수 있어서 사본으로 저장해요', 4000);
+    saveBytes(new Uint8Array(out), { name: `${base}_수정.${outExt}`, mime, overwrite: false });
+  }
+  A.setFillable?.(true);
+
   draw();
   hideStatus();
+}
+
+// =================================================================== 워드 (docx)
+
+async function openDocx(buf) {
+  const m = await import('./vendor/office/entry-docx.js');
+  const host = document.createElement('div');
+  host.className = 'docxhost';
+  pagesEl.appendChild(host);
+  await m.renderAsync(buf, host, null, {
+    inWrapper: true, breakPages: true, ignoreLastRenderedPageBreak: false,
+    useBase64URL: true, renderComments: false, experimental: true,
+  });
+  const secs = [...host.querySelectorAll('section.docx')];
+  if (!secs.length) throw new Error('내용이 없어요');
+  // 화면 폭에 맞춰 축소
+  const pw = Math.max(...secs.map((s) => s.offsetWidth));
+  const avail = document.documentElement.clientWidth - 16;
+  if (pw > avail) host.style.zoom = avail / pw;
+  hideStatus();
+  A.setPageInfo(secs.length > 1 ? `${secs.length}쪽` : '');
+
+  // 채우기용 덧그림 층
+  D.kind = 'docx';
+  D.W = pw;
+  D.slots = secs.map((el, i) => {
+    el.style.position = 'relative';
+    const ann = document.createElement('div');
+    ann.className = 'ann';
+    el.appendChild(ann);
+    return { el, ann, n: i + 1 };
+  });
+  // 워드 진짜 편집은 아직 → 연필 숨김
+}
+
+// =================================================================== PPT (pptx) — 보기 전용
+
+async function openPptx(buf) {
+  const host = document.createElement('div');
+  host.className = 'pptxhost';
+  host.style.width = pageWidth() + 'px';
+  pagesEl.appendChild(host);
+  const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+  try {
+    const m = await import('./vendor/office/entry-pptx.js');
+    const v = await m.PptxViewer.open(ab, host, { fitMode: 'contain', listOptions: { windowed: true } });
+    hideStatus();
+    A.setPageInfo(`${v.slideCount}장`);
+  } catch (e) {
+    // 예비 라이브러리
+    console.warn('pptx-renderer failed, fallback', e);
+    host.replaceChildren();
+    const m2 = await import('./vendor/office/entry-pptx2.js');
+    const pres = await m2.loadPresentation(ab.slice(0));
+    const n = pres.slides?.length || 0;
+    for (let i = 0; i < n; i++) {
+      const el = document.createElement('div');
+      el.className = 'slide2';
+      host.appendChild(el);
+      m2.renderSlideToElement(pres, i, el);
+    }
+    hideStatus();
+    A.setPageInfo(`${n}장`);
+  }
 }
 
 // =================================================================== 서류 채우기
 
 let fillMod = null;
 window.toggleFill = async () => {
+  if (D.toggleEdit) { D.toggleEdit(); return; }
   try {
     fillMod ||= await import('./fill.js');
     fillMod.toggle(D, A);

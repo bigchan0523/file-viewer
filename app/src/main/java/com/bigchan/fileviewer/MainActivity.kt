@@ -275,8 +275,13 @@ class MainActivity : Activity() {
     private fun rememberRecent(uri: Uri, name: String) {
         if (isOwnFile(uri)) { bumpRecent(uri.toString()); return }
         val persisted = try {
-            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); true
-        } catch (_: Exception) { false }
+            contentResolver.takePersistableUriPermission(uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION); true
+        } catch (_: Exception) {
+            try {
+                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); true
+            } catch (_: Exception) { false }
+        }
         if (persisted) {
             putRecent(uri.toString(), name, false)
             return
@@ -388,6 +393,19 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun setFillMode(active: Boolean) = runOnUiThread {
             editBtn.imageTintList = if (active) ColorStateList.valueOf(0xFF2F6BFF.toInt()) else null
+        }
+
+        /** 원본에 덮어쓰기. 권한이 없거나 앱 안 사본이면 false → 웹 쪽에서 "다른 이름으로 저장" */
+        @JavascriptInterface
+        fun overwrite(base64: String): Boolean {
+            val uri = currentUri ?: return false
+            if (isOwnFile(uri)) return false
+            return try {
+                val bytes = Base64.decode(base64, Base64.DEFAULT)
+                val out = contentResolver.openOutputStream(uri, "wt") ?: return false
+                out.use { it.write(bytes) }
+                true
+            } catch (_: Exception) { false }
         }
 
         @JavascriptInterface

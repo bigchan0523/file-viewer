@@ -428,6 +428,25 @@ async function saveRaster() {
       const ctx = c.getContext('2d');
       ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
       await pg.render({ canvasContext: ctx, viewport: vp }).promise;
+    } else if (D.kind === 'docx') {
+      // 워드: 화면에 그려진 페이지를 그대로 그림으로 (덧그림 층은 잠깐 숨김)
+      const h2i = await import('./vendor/office/entry-h2i.js');
+      const host = s.el.closest('.docxhost');
+      const z = host ? host.style.zoom : '';
+      if (host) host.style.zoom = '';
+      s.ann.style.visibility = 'hidden';
+      try {
+        const w = s.el.offsetWidth, h = s.el.offsetHeight;
+        ptW = w * 0.75; ptH = h * 0.75;
+        const shot = await h2i.toCanvas(s.el, { pixelRatio: PX / w, backgroundColor: '#ffffff', cacheBust: false });
+        c.width = PX; c.height = Math.round(PX * h / w);
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(shot, 0, 0, c.width, c.height);
+      } finally {
+        s.ann.style.visibility = '';
+        if (host) host.style.zoom = z;
+      }
     } else {
       const svg = D.hwp.renderPageSvg(s.n - 1);
       const { w, h } = svgSize(svg);

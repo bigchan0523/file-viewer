@@ -95,5 +95,26 @@ OFFDIR="$(mktemp -d)"
   ls -la "$OUT/office"
 )
 
+# ---------- (조사) 한글 편집기 rhwp-studio 를 앱 안에 넣을 수 있는지 ----------
+(
+  set +e
+  ED="$(mktemp -d)"; cd "$ED"
+  npm init -y >/dev/null
+  npm install --no-audit --no-fund @rhwp/editor >/dev/null 2>&1
+  echo "===== @rhwp/editor files ====="
+  find node_modules/@rhwp/editor -type f | sed 's#node_modules/@rhwp/editor/##' | sort
+  cat node_modules/@rhwp/editor/package.json
+  find node_modules/@rhwp/editor -name '*.d.ts' -exec cat {} \; | head -150
+  echo "===== rhwp repo ====="
+  RV="$(node -p "require('$TMP/node_modules/@rhwp/core/package.json').version")"
+  git clone --depth 1 --branch "v$RV" https://github.com/edwardkim/rhwp.git rhwp 2>&1 | tail -2 || true
+  [ -d rhwp ] || git clone --depth 1 https://github.com/edwardkim/rhwp.git rhwp 2>&1 | tail -2
+  cd rhwp && git log -1 --format='%H %d %s' && ls
+  echo "--- studio package.json"; cat rhwp-studio/package.json
+  echo "--- studio vite config"; cat rhwp-studio/vite.config.* 2>/dev/null | head -60
+  echo "--- wasm imports"; grep -rn "pkg/\|@rhwp/core\|rhwp_bg\|from '.*rhwp" rhwp-studio/src | head -20
+  echo "--- tags"; git ls-remote --tags https://github.com/edwardkim/rhwp.git | tail -10
+)
+
 echo "===== vendor size ====="
 du -sh "$OUT"/*

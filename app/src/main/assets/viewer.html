@@ -83,6 +83,31 @@
     box-shadow:0 4px 16px rgba(0,0,0,.25); }
   #cellbar b { color:#7ee2a8; margin-right:8px; }
 
+  /* ---------- 워드 / PPT ---------- */
+  .docxhost .docx-wrapper { background:transparent !important; padding:8px 0 24px !important; }
+  .docxhost .docx-wrapper > section.docx { margin:0 auto 10px !important; box-shadow:0 1px 3px rgba(0,0,0,.16) !important; }
+  .docxhost .ann { position:absolute; inset:0; z-index:5; }
+  .pptxhost { margin:8px auto 24px; }
+  .slide2 { margin:0 0 10px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.16); }
+  .slide2 svg { display:block; width:100%; height:auto; }
+
+  /* ---------- 텍스트·엑셀 수정 ---------- */
+  .textedit { display:block; width:calc(100% - 16px); margin:8px; padding:16px 14px; border:2px solid #2f6bff; border-radius:12px;
+    background:#fff; color:var(--ink); font-family:inherit; line-height:1.7; resize:none; outline:none; overflow:hidden; }
+  body.editing #pages { padding-bottom:90px; }
+  body.editing.sheetmode .sheet { margin-bottom:76px; }
+  #editbar { position:fixed; left:0; right:0; bottom:0; z-index:20; display:flex; gap:8px; padding:10px;
+    background:rgba(238,240,243,.97); box-shadow:0 -1px 6px rgba(0,0,0,.12); }
+  #editbar button { flex:1; border:0; border-radius:12px; padding:13px; font-family:inherit; font-size:15px; background:#fff;
+    color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.08); }
+  #editbar button.save { background:#1f9d55; color:#fff; font-weight:700; }
+  body.editing #cellbar { bottom:78px; }
+  .ced { display:flex; align-items:center; gap:8px; }
+  .ced textarea { flex:1; min-width:0; border:0; border-radius:8px; padding:8px 10px; font-family:inherit; font-size:15px; resize:none; }
+  .ced button { border:0; border-radius:8px; padding:8px 14px; background:#7ee2a8; color:#10331f; font-weight:700; font-family:inherit; font-size:14px; }
+  #toast { position:fixed; left:50%; top:14px; transform:translateX(-50%); z-index:40; background:#1d2129; color:#fff;
+    border-radius:10px; padding:9px 14px; font-size:13.5px; max-width:90%; text-align:center; pointer-events:none; }
+
   /* ---------- 상태 ---------- */
   #status { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:14px; padding:24px; color:var(--sub); font-size:15px; text-align:center; }
@@ -104,10 +129,10 @@
     <h1>광고 없는 파일 뷰어</h1>
   </div>
   <button id="openBtn">파일 열기</button>
-  <div class="kinds"><span class="chip">PDF</span><span class="chip">HWP·HWPX</span><span class="chip">엑셀·CSV</span><span class="chip">TXT</span></div>
+  <div class="kinds"><span class="chip">PDF</span><span class="chip">HWP·HWPX</span><span class="chip">워드·PPT</span><span class="chip">엑셀·CSV</span><span class="chip">TXT</span></div>
   <div class="section">최근 파일</div>
   <div id="recent"></div>
-  <div class="foot">PDF: pdf.js (Apache-2.0) · 한글: rhwp (MIT) · 엑셀: SheetJS (Apache-2.0) · 저장: pdf-lib (MIT)</div>
+  <div class="foot">PDF: pdf.js (Apache-2.0) · 한글: rhwp (MIT) · 엑셀: SheetJS (Apache-2.0) · 워드: docx-preview · PPT: pptx-renderer · 저장: pdf-lib</div>
 </div>
 
 <div id="pages"></div>
