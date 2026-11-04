@@ -95,25 +95,31 @@ OFFDIR="$(mktemp -d)"
   ls -la "$OUT/office"
 )
 
-# ---------- (조사) 한글 편집기 rhwp-studio 를 앱 안에 넣을 수 있는지 ----------
+# ---------- 한글 편집기: rhwp-studio 를 직접 빌드해서 assets/studio 에 넣음 (인터넷 없이 동작) ----------
+STUDIO_OUT="$ROOT/app/src/main/assets/studio"
+rm -rf "$STUDIO_OUT"
 (
   set +e
+  RV="$(node -p "require('$TMP/node_modules/@rhwp/core/package.json').version")"
   ED="$(mktemp -d)"; cd "$ED"
   npm init -y >/dev/null
-  npm install --no-audit --no-fund @rhwp/editor >/dev/null 2>&1
-  echo "===== @rhwp/editor files ====="
-  find node_modules/@rhwp/editor -type f | sed 's#node_modules/@rhwp/editor/##' | sort
-  cat node_modules/@rhwp/editor/package.json
-  find node_modules/@rhwp/editor -name '*.d.ts' -exec cat {} \; | head -150
-  echo "===== rhwp repo ====="
-  RV="$(node -p "require('$TMP/node_modules/@rhwp/core/package.json').version")"
-  git clone --depth 1 --branch "v$RV" https://github.com/edwardkim/rhwp.git rhwp 2>&1 | tail -2 || true
-  [ -d rhwp ] || git clone --depth 1 https://github.com/edwardkim/rhwp.git rhwp 2>&1 | tail -2
-  cd rhwp && git log -1 --format='%H %d %s' && ls
-  echo "--- studio package.json"; cat rhwp-studio/package.json
-  echo "--- studio vite config"; cat rhwp-studio/vite.config.* 2>/dev/null | head -60
-  echo "--- wasm imports"; grep -rn "pkg/\|@rhwp/core\|rhwp_bg\|from '.*rhwp" rhwp-studio/src | head -20
-  echo "--- tags"; git ls-remote --tags https://github.com/edwardkim/rhwp.git | tail -10
+  npm install --no-audit --no-fund "@rhwp/editor@$RV" >/dev/null 2>&1 || npm install --no-audit --no-fund @rhwp/editor >/dev/null 2>&1
+  mkdir -p "$OUT/rhwpeditor"
+  cp node_modules/@rhwp/editor/*.js "$OUT/rhwpeditor/"
+  echo "===== editor methods ====="
+  grep -oE "(async )?[a-zA-Z]+\([a-zA-Z, ={}]*\) ?\{" node_modules/@rhwp/editor/index.js | sort -u | head -80
+  grep -oE "'[a-zA-Z]+(:[a-zA-Z]+)?'" node_modules/@rhwp/editor/index.js | sort -u | head -80
+  git clone -q --depth 1 --branch "v$RV" https://github.com/edwardkim/rhwp.git rhwp || git clone -q --depth 1 https://github.com/edwardkim/rhwp.git rhwp
+  echo "===== studio vite alias ====="
+  grep -nE "alias|@wasm|pkg|base:|VitePWA\(|outDir|input" rhwp/rhwp-studio/vite.config.* | head -40
+  mkdir -p rhwp/pkg
+  cp "$TMP/node_modules/@rhwp/core/"*.js "$TMP/node_modules/@rhwp/core/"*.wasm "$TMP/node_modules/@rhwp/core/"*.d.ts rhwp/pkg/
+  cd rhwp/rhwp-studio
+  npm install --no-audit --no-fund 2>&1 | tail -3
+  RHWP_WITHOUT_HWPCTRL=1 npx vite build --base=./ --outDir "$STUDIO_OUT" --emptyOutDir 2>&1 | tail -40
+  echo "===== studio out ====="
+  ls -la "$STUDIO_OUT" 2>&1 | head -30
+  du -sh "$STUDIO_OUT" 2>&1
 )
 
 echo "===== vendor size ====="
