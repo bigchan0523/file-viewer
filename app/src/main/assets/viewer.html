@@ -55,11 +55,19 @@
   .note { text-align:center; color:var(--sub); font-size:13px; margin:6px 0; }
 
   /* ---------- 엑셀 ---------- */
-  .tabs { display:flex; gap:6px; overflow-x:auto; padding:8px 8px 6px; -webkit-overflow-scrolling:touch; }
+  body.sheetmode { overflow:hidden; }
+  body.sheetmode #pages { display:flex; flex-direction:column; height:100vh; height:100dvh; padding:0; }
+  .sheettop { flex:none; display:flex; align-items:center; gap:6px; padding:8px 8px 6px; }
+  .tabs { flex:1; min-width:0; display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .zoom { flex:none; display:flex; gap:4px; }
+  .zoom button { width:38px; height:34px; border:0; border-radius:10px; background:#fff; color:var(--ink); font-size:20px;
+    line-height:1; font-family:inherit; box-shadow:0 1px 2px rgba(0,0,0,.08); }
+  .sheet { flex:1; min-height:0; overflow:auto; -webkit-overflow-scrolling:touch; margin:0 8px 8px; background:#fff;
+    border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .sheet .more { margin:14px 10px 70px; }
   .tab { flex:none; border:0; border-radius:999px; padding:7px 14px; background:#fff; color:var(--sub);
     font-family:inherit; font-size:14px; box-shadow:0 1px 2px rgba(0,0,0,.08); white-space:nowrap; }
   .tab.on { background:#1f9d55; color:#fff; font-weight:700; }
-  .sheet { padding:0 8px 8px; }
   table.grid { border-collapse:separate; border-spacing:0; table-layout:fixed; background:#fff; font-size:13px; }
   .grid th, .grid td { border-right:1px solid #e3e6ea; border-bottom:1px solid #e3e6ea; height:26px; padding:3px 6px;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

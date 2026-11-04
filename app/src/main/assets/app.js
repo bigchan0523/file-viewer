@@ -462,28 +462,44 @@ async function openSheet(buf, kind) {
   const ext = extOf(docName);
   const wb = kind === 'csv'
     ? X.read(decodeText(buf), { type: 'string', raw: true, ...(ext === 'tsv' ? { FS: '\t' } : {}) })
-    : X.read(buf, { type: 'array' });
+    : X.read(buf, { type: 'array', cellStyles: true });
 
-  // 표는 화면보다 넓으니 더 작게 축소할 수 있게
-  document.querySelector('meta[name=viewport]')?.setAttribute('content',
-    'width=device-width, initial-scale=1, minimum-scale=0.25, maximum-scale=6, user-scalable=yes');
 
   const sheets = wb.SheetNames
     .map((name, i) => ({ name, i, hidden: wb.Workbook?.Sheets?.[i]?.Hidden }))
     .filter((s) => !s.hidden);
   if (!sheets.length) throw new Error('시트가 없어요');
 
+  // 위: 시트 탭 + 확대/축소, 아래: 표 전용 스크롤 영역(행·열 머리글 고정)
+  document.body.classList.add('sheetmode');
+  const top = document.createElement('div');
+  top.className = 'sheettop';
   const tabs = document.createElement('div');
   tabs.className = 'tabs';
+  const zoomBox = document.createElement('div');
+  zoomBox.className = 'zoom';
+  zoomBox.innerHTML = '<button data-z="-1" aria-label="축소">−</button><button data-z="1" aria-label="확대">+</button>';
+  top.append(tabs, zoomBox);
   const holder = document.createElement('div');
   holder.className = 'sheet';
   const more = document.createElement('button');
   more.className = 'more';
   const cellbar = $('#cellbar');
-  pagesEl.append(tabs, holder, more);
+  pagesEl.append(top, holder);
   if (sheets.length > 1) {
     tabs.innerHTML = sheets.map((s, k) => `<button class="tab" data-k="${k}">${esc(s.name)}</button>`).join('');
-  } else tabs.hidden = true;
+  }
+
+  let zoom = 1;
+  try { zoom = +localStorage.getItem('sheetZoom') || 1; } catch {}
+  const applyZoom = () => { const t = holder.querySelector('table'); if (t) t.style.zoom = zoom; };
+  zoomBox.onclick = (e) => {
+    const d = +e.target.dataset.z;
+    if (!d) return;
+    zoom = Math.round(Math.max(0.4, Math.min(2.2, zoom + d * 0.15)) * 100) / 100;
+    applyZoom();
+    try { localStorage.setItem('sheetZoom', zoom); } catch {}
+  };
 
   const STEP = 500, MAXCOL = 200;
   let cur = 0, rowsShown = STEP;
@@ -499,7 +515,7 @@ async function openSheet(buf, kind) {
     cellbar.hidden = true;
     for (const t of tabs.children) t.classList.toggle('on', +t.dataset.k === cur);
     A.setPageInfo(sheets.length > 1 ? `${cur + 1} / ${sheets.length} 시트` : '');
-    if (!ws || !ws['!ref']) { holder.innerHTML = '<div class="empty">빈 시트예요</div>'; more.hidden = true; return; }
+    if (!ws || !ws['!ref']) { holder.innerHTML = '<div class="empty">빈 시트예요</div>'; return; }
 
     const r = X.utils.decode_range(ws['!ref']);
     const lastRow = Math.min(r.e.r, r.s.r + rowsShown - 1);
@@ -539,6 +555,8 @@ async function openSheet(buf, kind) {
     }
     html += '</tbody>';
     holder.innerHTML = `<table class="grid" style="width:${total}px">${html}</table>`;
+    holder.appendChild(more);
+    applyZoom();
 
     const totalRows = r.e.r - r.s.r + 1;
     more.hidden = lastRow >= r.e.r;
@@ -552,7 +570,7 @@ async function openSheet(buf, kind) {
     cur = +t.dataset.k;
     rowsShown = STEP;
     draw();
-    scrollTo(0, 0);
+    holder.scrollTo(0, 0);
   };
   more.onclick = () => { rowsShown += STEP; draw(); };
 
