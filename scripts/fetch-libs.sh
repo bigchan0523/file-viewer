@@ -47,5 +47,15 @@ echo "entry -> $MAIN , wasm -> $WASM"
 echo "===== @rhwp/core API (d.ts) ====="
 find "$R" -name '*.d.ts' -exec cat {} \; | head -400 || true
 
+# ---------- SheetJS (엑셀: xlsx/xls/csv/ods) — 공식 배포처에서 받음 ----------
+XLSX_VERSION="${XLSX_VERSION:-0.20.3}"
+npm install --no-audit --no-fund "https://cdn.sheetjs.com/xlsx-$XLSX_VERSION/xlsx-$XLSX_VERSION.tgz"
+X=node_modules/xlsx
+mkdir -p "$OUT/xlsx"
+cp "$X/xlsx.mjs" "$OUT/xlsx/xlsx.mjs"
+if [ -f "$X/dist/cpexcel.full.mjs" ]; then cp "$X/dist/cpexcel.full.mjs" "$OUT/xlsx/"; else echo "cpexcel not found"; fi
+cp "$X/LICENSE" "$OUT/xlsx/" 2>/dev/null || true
+ls -la "$OUT/xlsx"
+
 echo "===== vendor size ====="
 du -sh "$OUT"/*

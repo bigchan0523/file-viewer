@@ -1,6 +1,6 @@
 # 파일 뷰어
 
-광고 없는 안드로이드용 PDF · HWP · HWPX 뷰어.
+광고 없는 안드로이드용 PDF · HWP · HWPX · 엑셀(xlsx/xls/csv) · TXT 뷰어.
 
 - 파일 앱·카톡에서 **다른 앱으로 열기 → 파일 뷰어** 또는 **공유하기 → 파일 뷰어**
 - 앱 안에서 **파일 열기**, **최근 파일** 목록
@@ -24,3 +24,4 @@
 
 - [pdf.js](https://github.com/mozilla/pdf.js) — Apache-2.0
 - [rhwp](https://github.com/edwardkim/rhwp) — MIT
+- [SheetJS](https://sheetjs.com) — Apache-2.0

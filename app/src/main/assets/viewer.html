@@ -31,6 +31,7 @@
   .badge { flex:none; width:42px; height:42px; border-radius:11px; display:flex; align-items:center; justify-content:center;
     font-size:12px; font-weight:800; color:#fff; letter-spacing:.3px; }
   .badge.pdf { background:#e5484d; } .badge.hwp { background:var(--accent); } .badge.etc { background:#8b95a1; }
+  .badge.xls { background:#1f9d55; } .badge.txt { background:#5b6472; }
   .meta { flex:1; min-width:0; }
   .name { font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .time { font-size:12px; color:var(--sub); margin-top:3px; }
@@ -42,6 +43,35 @@
   #pages { padding:8px 0 28px; }
   .page { position:relative; margin:0 auto 10px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.16); overflow:hidden; }
   .page > canvas, .page > svg { display:block; width:100%; height:100%; }
+
+  /* ---------- 텍스트 ---------- */
+  .tbar { display:flex; justify-content:flex-end; gap:8px; padding:8px 8px 0; }
+  .tbar button, .more { border:0; border-radius:10px; background:#fff; color:var(--ink); font-family:inherit;
+    font-size:14px; padding:8px 14px; box-shadow:0 1px 2px rgba(0,0,0,.08); }
+  .textdoc { margin:8px; padding:16px 14px; background:#fff; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,.12);
+    font-size:15px; line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word; }
+  .textdoc pre { margin:0; font:inherit; white-space:inherit; }
+  .more { display:block; margin:10px auto 24px; padding:12px 20px; }
+  .note { text-align:center; color:var(--sub); font-size:13px; margin:6px 0; }
+
+  /* ---------- 엑셀 ---------- */
+  .tabs { display:flex; gap:6px; overflow-x:auto; padding:8px 8px 6px; -webkit-overflow-scrolling:touch; }
+  .tab { flex:none; border:0; border-radius:999px; padding:7px 14px; background:#fff; color:var(--sub);
+    font-family:inherit; font-size:14px; box-shadow:0 1px 2px rgba(0,0,0,.08); white-space:nowrap; }
+  .tab.on { background:#1f9d55; color:#fff; font-weight:700; }
+  .sheet { padding:0 8px 8px; }
+  table.grid { border-collapse:separate; border-spacing:0; table-layout:fixed; background:#fff; font-size:13px; }
+  .grid th, .grid td { border-right:1px solid #e3e6ea; border-bottom:1px solid #e3e6ea; height:26px; padding:3px 6px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .grid thead th { position:sticky; top:0; z-index:2; background:#f3f5f7; color:#6b7280; font-weight:600; text-align:center; font-size:12px; }
+  .grid tbody th { position:sticky; left:0; z-index:1; background:#f3f5f7; color:#6b7280; font-weight:600; text-align:center; font-size:12px; }
+  .grid thead th.corner { left:0; z-index:3; }
+  .grid td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .grid td.sel { outline:2px solid #1f9d55; outline-offset:-2px; }
+  #cellbar { position:fixed; left:8px; right:8px; bottom:10px; z-index:10; background:#1d2129; color:#fff; border-radius:12px;
+    padding:10px 14px; font-size:14px; line-height:1.5; max-height:40vh; overflow:auto; white-space:pre-wrap; word-break:break-word;
+    box-shadow:0 4px 16px rgba(0,0,0,.25); }
+  #cellbar b { color:#7ee2a8; margin-right:8px; }
 
   /* ---------- 상태 ---------- */
   #status { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -65,14 +95,15 @@
     <p>폰 안에서만 열고, 인터넷으로 아무것도 안 보내요</p>
   </div>
   <button id="openBtn">파일 열기</button>
-  <div class="kinds"><span class="chip">PDF</span><span class="chip">HWP</span><span class="chip">HWPX</span></div>
+  <div class="kinds"><span class="chip">PDF</span><span class="chip">HWP·HWPX</span><span class="chip">엑셀·CSV</span><span class="chip">TXT</span></div>
   <div class="section">최근 파일</div>
   <div id="recent"></div>
-  <div class="foot">PDF 표시: pdf.js (Apache-2.0) · 한글 표시: rhwp (MIT)</div>
+  <div class="foot">PDF: pdf.js (Apache-2.0) · 한글: rhwp (MIT) · 엑셀: SheetJS (Apache-2.0)</div>
 </div>
 
 <div id="pages"></div>
 <div id="status" hidden></div>
+<div id="cellbar" hidden></div>
 
 <script type="module" src="app.js"></script>
 </body>

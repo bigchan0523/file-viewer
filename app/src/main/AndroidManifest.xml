@@ -37,6 +37,13 @@
                 <data android:mimeType="application/hwp+zip" />
                 <data android:mimeType="application/haansofthwpx" />
                 <data android:mimeType="application/vnd.hancom.hwpx" />
+                <data android:mimeType="text/*" />
+                <data android:mimeType="application/vnd.ms-excel" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+                <data android:mimeType="application/vnd.ms-excel.sheet.macroEnabled.12" />
+                <data android:mimeType="application/vnd.oasis.opendocument.spreadsheet" />
+                <data android:mimeType="application/csv" />
+                <data android:mimeType="application/json" />
                 <data android:mimeType="application/octet-stream" />
             </intent-filter>
 
@@ -53,6 +60,11 @@
                 <data android:mimeType="application/hwp+zip" />
                 <data android:mimeType="application/haansofthwpx" />
                 <data android:mimeType="application/vnd.hancom.hwpx" />
+                <data android:mimeType="text/csv" />
+                <data android:mimeType="text/comma-separated-values" />
+                <data android:mimeType="application/vnd.ms-excel" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+                <data android:mimeType="application/vnd.oasis.opendocument.spreadsheet" />
                 <data android:mimeType="application/octet-stream" />
             </intent-filter>
         </activity>
