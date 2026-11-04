@@ -63,25 +63,37 @@ mkdir -p "$OUT/pdflib"
 cp node_modules/pdf-lib/dist/pdf-lib.min.js "$OUT/pdflib/"
 cp node_modules/pdf-lib/LICENSE.md "$OUT/pdflib/" 2>/dev/null || true
 
-# ---------- 워드(docx-preview) · PPT(pptx-renderer / pptx-viewer) — esbuild 로 한 파일씩 묶음 ----------
-npm install --no-audit --no-fund docx-preview jszip @aiden0z/pptx-renderer pptx-viewer esbuild || true
-mkdir -p "$OUT/office"
-echo "export { renderAsync } from 'docx-preview';" > entry-docx.mjs
-echo "export * from '@aiden0z/pptx-renderer';" > entry-pptx.mjs
-echo "export * from 'pptx-viewer';" > entry-pptx2.mjs
-for e in entry-docx entry-pptx entry-pptx2; do
-  npx esbuild "$e.mjs" --bundle --format=esm --minify --target=es2020 --outdir="$OUT/office" --loader:.woff2=dataurl --loader:.woff=dataurl --loader:.ttf=dataurl --loader:.wasm=binary || echo "esbuild failed: $e"
-done
-for pkg in docx-preview @aiden0z/pptx-renderer pptx-viewer; do
-  echo "===== $pkg ====="
-  node -e "const p=require('./node_modules/$pkg/package.json'); console.log(p.version, p.license, p.main, p.module, p.types||p.typings)" || true
-done
-echo "===== pptx-renderer d.ts ====="
-find node_modules/@aiden0z/pptx-renderer -name '*.d.ts' | head -20
-for f in $(find node_modules/@aiden0z/pptx-renderer -maxdepth 2 -name 'index.d.ts' | head -2); do grep -nE "export|open\(|setFitMode|setZoom|renderList|interface .*Options|fitMode|windowed|zoom" "$f" | head -80; done
-echo "===== pptx-viewer d.ts ====="
-for f in $(find node_modules/pptx-viewer -maxdepth 2 -name 'index.d.ts' | head -2); do grep -nE "export|renderSlide|loadPresentation|width|height" "$f" | head -60; done
-ls -la "$OUT/office"
+# ---------- 워드(docx-preview) · PPT(pptx-renderer / pptx-viewer) — 별도 폴더에서 esbuild 로 한 파일씩 묶음 ----------
+OFFDIR="$(mktemp -d)"
+(
+  set +e
+  cd "$OFFDIR"
+  npm init -y >/dev/null
+  npm install --no-audit --no-fund --legacy-peer-deps docx-preview jszip html-to-image @aiden0z/pptx-renderer pptx-viewer esbuild
+  mkdir -p "$OUT/office"
+  echo "export { renderAsync } from 'docx-preview';" > entry-docx.mjs
+  echo "export * from '@aiden0z/pptx-renderer';" > entry-pptx.mjs
+  echo "export * from 'pptx-viewer';" > entry-pptx2.mjs
+  echo "export { toCanvas } from 'html-to-image';" > entry-h2i.mjs
+  for e in entry-docx entry-pptx entry-pptx2 entry-h2i; do
+    npx esbuild "$e.mjs" --bundle --format=esm --minify --target=es2020 --outdir="$OUT/office" \
+      --loader:.woff2=dataurl --loader:.woff=dataurl --loader:.ttf=dataurl --loader:.wasm=binary || echo "esbuild failed: $e"
+  done
+  for pkg in docx-preview html-to-image @aiden0z/pptx-renderer pptx-viewer; do
+    echo "===== $pkg ====="
+    node -e "const p=require('$OFFDIR/node_modules/$pkg/package.json'); console.log(p.version, p.license, p.main, p.module, p.types||p.typings)"
+  done
+  echo "===== pptx-renderer d.ts ====="
+  find node_modules/@aiden0z/pptx-renderer -name '*.d.ts' | head -20
+  for f in $(find node_modules/@aiden0z/pptx-renderer -name 'index.d.ts' | head -2); do
+    grep -nE "export|open|setFitMode|setZoom|renderList|Options|fitMode|windowed|zoom|width" "$f" | head -120
+  done
+  echo "===== pptx-viewer d.ts ====="
+  for f in $(find node_modules/pptx-viewer -name 'index.d.ts' | head -2); do
+    grep -nE "export|renderSlide|loadPresentation|width|height" "$f" | head -60
+  done
+  ls -la "$OUT/office"
+)
 
 echo "===== vendor size ====="
 du -sh "$OUT"/*
