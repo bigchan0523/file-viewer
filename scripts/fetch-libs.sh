@@ -109,7 +109,13 @@ rm -rf "$STUDIO_OUT"
   echo "===== editor methods ====="
   grep -oE "(async )?[a-zA-Z]+\([a-zA-Z, ={}]*\) ?\{" node_modules/@rhwp/editor/index.js | sort -u | head -80
   grep -oE "'[a-zA-Z]+(:[a-zA-Z]+)?'" node_modules/@rhwp/editor/index.js | sort -u | head -80
-  git clone -q --depth 1 --branch "v$RV" https://github.com/edwardkim/rhwp.git rhwp || git clone -q --depth 1 https://github.com/edwardkim/rhwp.git rhwp
+  # 저장소가 매우 커서(문서·샘플 이미지 수만 개) 편집기 빌드에 필요 없는 폴더는 받지 않음
+  git clone -q --depth 1 --filter=blob:none --sparse --branch "v$RV" https://github.com/edwardkim/rhwp.git rhwp \
+    || git clone -q --depth 1 --filter=blob:none --sparse https://github.com/edwardkim/rhwp.git rhwp
+  ( cd rhwp && git sparse-checkout set --no-cone '/*' '!/mydocs/' '!/saved/' '!/samples/' '!/tests/' '!/fuzz/' \
+      '!/gym/' '!/pdf/' '!/output/' '!/crates/' '!/src/' '!/bindings/' '!/rhwp-chrome/' '!/rhwp-firefox/' '!/rhwp-safari/' \
+      '!/rhwp-ios/' '!/rhwp-desk/' '!/rhwp-vscode/' '!/fixtures/' '!/rhwp-studio/e2e/' '!/rhwp-studio/tests/' )
+  du -sh rhwp
   echo "===== studio vite alias ====="
   grep -nE "alias|@wasm|pkg|base:|VitePWA\(|outDir|input" rhwp/rhwp-studio/vite.config.* | head -40
   mkdir -p rhwp/pkg
@@ -120,6 +126,7 @@ rm -rf "$STUDIO_OUT"
   # 앱에 필요 없는 것 정리 (예제 문서, 오프라인 캐시용 서비스워커)
   rm -rf "$STUDIO_OUT/samples" "$STUDIO_OUT/sw.js" "$STUDIO_OUT"/workbox-*.js "$STUDIO_OUT/registerSW.js" "$STUDIO_OUT/manifest.webmanifest"
   sed -i -e '/registerSW\.js/d' -e '/manifest\.webmanifest/d' "$STUDIO_OUT/index.html"
+  cd "$ED/.." && rm -rf "$ED"
   echo "===== studio out ====="
   ls -la "$STUDIO_OUT" 2>&1 | head -30
   du -sh "$STUDIO_OUT" 2>&1
