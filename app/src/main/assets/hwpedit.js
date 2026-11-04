@@ -51,17 +51,46 @@ A.setFillMode(true);
 // 위쪽 연필 버튼 = 편집 끝내기
 window.toggleFill = () => leave();
 
+// 편집기 안에서 난 오류를 모아뒀다가, 열기에 실패하면 화면에 보여줌
+const errs = [];
+addEventListener('error', (e) => errs.push(String(e.message || e)));
+addEventListener('unhandledrejection', (e) => errs.push(String(e.reason?.message || e.reason)));
+const hookFrameErrors = () => {
+  const w = document.querySelector('#editor iframe')?.contentWindow;
+  if (!w) return setTimeout(hookFrameErrors, 200);
+  try {
+    w.addEventListener('error', (e) => errs.push('편집기: ' + (e.message || e)));
+    w.addEventListener('unhandledrejection', (e) => errs.push('편집기: ' + (e.reason?.message || e.reason)));
+  } catch {}
+};
+hookFrameErrors();
+
+function failed(e) {
+  console.error(e);
+  busy('');
+  const detail = [String(e?.message || e || ''), ...errs].filter(Boolean).slice(0, 6).map((x) => x.slice(0, 200));
+  $('#editor').innerHTML = `<div style="padding:40px 20px;text-align:center;color:#6b7280;line-height:1.6">편집기를 열지 못했어요.<br>
+    <small style="display:block;margin-top:10px;color:#b42318;word-break:break-all;white-space:pre-wrap"></small>
+    <button id="retry" style="margin-top:16px;border:0;border-radius:10px;padding:10px 18px;background:#2f6bff;color:#fff;font-size:15px">다시 시도</button></div>`;
+  $('#editor small').textContent = detail.join('\n');
+  $('#retry').onclick = () => location.reload();
+}
+
+const withTimeout = (p, ms, what) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(what + ' 시간 초과')), ms))]);
+
 try {
-  editor = await createEditor('#editor', { studioUrl: new URL('studio/', location.href).href });
+  busy('편집기 여는 중…');
+  editor = await withTimeout(
+    createEditor('#editor', { studioUrl: new URL('studio/', location.href).href, handshakeTimeoutMs: 15000, requestTimeoutMs: 90000 }),
+    60000, '편집기 시작');
+  busy('문서 불러오는 중…');
   const buf = await (await fetch('/doc/' + docId)).arrayBuffer();
   origSize = buf.byteLength;
-  await editor.loadFile(buf, name);
+  await withTimeout(editor.loadFile(buf, name), 90000, '문서 불러오기');
   busy('');
   watchChanges();
 } catch (e) {
-  console.error(e);
-  busy('');
-  $('#editor').innerHTML = `<div style="padding:40px 20px;text-align:center;color:#6b7280">편집기를 열지 못했어요.<br><small>${String(e.message || e)}</small></div>`;
+  failed(e);
 }
 
 function watchChanges() {

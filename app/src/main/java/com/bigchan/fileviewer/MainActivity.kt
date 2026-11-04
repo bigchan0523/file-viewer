@@ -229,7 +229,8 @@ class MainActivity : Activity() {
         val path = url.path ?: return status(404, "Not Found")
         return when {
             path.startsWith("/assets/") -> {
-                val name = path.removePrefix("/assets/")
+                // 폴더 주소(…/studio/)는 index.html 로
+                val name = path.removePrefix("/assets/").let { if (it.isEmpty() || it.endsWith("/")) it + "index.html" else it }
                 try { ok(mimeOf(name), assets.open(name)) } catch (_: IOException) { status(404, "Not Found") }
             }
             path.startsWith("/doc/") -> {
