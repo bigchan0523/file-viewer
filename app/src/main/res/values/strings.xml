@@ -4,4 +4,5 @@
     <string name="home">처음 화면</string>
     <string name="open">파일 열기</string>
     <string name="share">공유</string>
+    <string name="fill">채우기</string>
 </resources>

@@ -42,7 +42,9 @@
   /* ---------- 문서 ---------- */
   #pages { padding:8px 0 28px; }
   .page { position:relative; margin:0 auto 10px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.16); overflow:hidden; }
-  .page > canvas, .page > svg { display:block; width:100%; height:100%; }
+  .page .pc, .page .ann { position:absolute; inset:0; }
+  .pc > canvas, .pc > svg { display:block; width:100%; height:100%; }
+  .ann { pointer-events:none; }
 
   /* ---------- 텍스트 ---------- */
   .tbar { display:flex; justify-content:flex-end; gap:8px; padding:8px 8px 0; }
@@ -100,19 +102,19 @@
       <svg width="34" height="34" viewBox="0 0 24 24"><path fill="#fff" d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm8 1.5V8h4.5L14 3.5zM7 12v1.6h10V12H7zm0 3.4V17h10v-1.6H7zm0 3.4V20h6v-1.2H7z"/></svg>
     </div>
     <h1>광고 없는 파일 뷰어</h1>
-    <p>폰 안에서만 열고, 인터넷으로 아무것도 안 보내요</p>
   </div>
   <button id="openBtn">파일 열기</button>
   <div class="kinds"><span class="chip">PDF</span><span class="chip">HWP·HWPX</span><span class="chip">엑셀·CSV</span><span class="chip">TXT</span></div>
   <div class="section">최근 파일</div>
   <div id="recent"></div>
-  <div class="foot">PDF: pdf.js (Apache-2.0) · 한글: rhwp (MIT) · 엑셀: SheetJS (Apache-2.0)</div>
+  <div class="foot">PDF: pdf.js (Apache-2.0) · 한글: rhwp (MIT) · 엑셀: SheetJS (Apache-2.0) · 저장: pdf-lib (MIT)</div>
 </div>
 
 <div id="pages"></div>
 <div id="status" hidden></div>
 <div id="cellbar" hidden></div>
 
+<link rel="stylesheet" href="fill.css">
 <script type="module" src="app.js"></script>
 </body>
 </html>

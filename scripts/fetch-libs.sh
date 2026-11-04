@@ -57,5 +57,11 @@ if [ -f "$X/dist/cpexcel.full.mjs" ]; then cp "$X/dist/cpexcel.full.mjs" "$OUT/x
 cp "$X/LICENSE" "$OUT/xlsx/" 2>/dev/null || true
 ls -la "$OUT/xlsx"
 
+# ---------- pdf-lib (채운 서류를 PDF로 저장) ----------
+npm install --no-audit --no-fund "pdf-lib@1.17.1"
+mkdir -p "$OUT/pdflib"
+cp node_modules/pdf-lib/dist/pdf-lib.min.js "$OUT/pdflib/"
+cp node_modules/pdf-lib/LICENSE.md "$OUT/pdflib/" 2>/dev/null || true
+
 echo "===== vendor size ====="
 du -sh "$OUT"/*

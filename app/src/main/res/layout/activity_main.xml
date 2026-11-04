@@ -48,6 +48,15 @@
             android:textSize="14sp" />
 
         <ImageButton
+            android:id="@+id/btnEdit"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/fill"
+            android:src="@drawable/ic_edit"
+            android:visibility="gone" />
+
+        <ImageButton
             android:id="@+id/btnOpen"
             android:layout_width="48dp"
             android:layout_height="48dp"

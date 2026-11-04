@@ -2,6 +2,9 @@ package com.bigchan.fileviewer
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.AlertDialog
+import android.content.res.ColorStateList
+import android.util.Base64
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -30,6 +33,7 @@ class MainActivity : Activity() {
         private const val HOST = "appassets.androidplatform.net"
         private const val BASE = "https://$HOST/"
         private const val REQ_PICK = 1001
+        private const val REQ_SAVE = 1002
         private const val MAX_RECENT = 20
         private const val MAX_COPY_BYTES = 80L * 1024 * 1024
     }
@@ -39,6 +43,8 @@ class MainActivity : Activity() {
     private lateinit var pageView: TextView
     private lateinit var homeBtn: ImageButton
     private lateinit var shareBtn: ImageButton
+    private lateinit var editBtn: ImageButton
+    private var pendingSave: ByteArray? = null
 
     /** 웹 쪽에서 /doc/<id> 로 요청하면 이 표에서 실제 파일 Uri를 찾아 넘겨줌 */
     private val docs = HashMap<String, Uri>()
@@ -56,9 +62,11 @@ class MainActivity : Activity() {
         pageView = findViewById(R.id.pageInfo)
         homeBtn = findViewById(R.id.btnHome)
         shareBtn = findViewById(R.id.btnShare)
+        editBtn = findViewById(R.id.btnEdit)
 
-        homeBtn.setOnClickListener { goHome() }
-        findViewById<View>(R.id.btnOpen).setOnClickListener { pickFile() }
+        homeBtn.setOnClickListener { confirmLeave { goHome() } }
+        findViewById<View>(R.id.btnOpen).setOnClickListener { confirmLeave { pickFile() } }
+        editBtn.setOnClickListener { web.evaluateJavascript("window.toggleFill && toggleFill()", null) }
         shareBtn.setOnClickListener { shareCurrent() }
 
         with(web.settings) {
@@ -99,7 +107,25 @@ class MainActivity : Activity() {
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        if (web.canGoBack()) web.goBack() else super.onBackPressed()
+        confirmLeave {
+            if (web.canGoBack()) web.goBack() else finish()
+        }
+    }
+
+    /** 채우기 중 저장 안 한 내용이 있으면 한 번 물어봄 */
+    private fun confirmLeave(action: () -> Unit) {
+        web.evaluateJavascript("!!window.__dirty") { r ->
+            if (r == "true") {
+                AlertDialog.Builder(this)
+                    .setMessage("작성한 내용을 저장하지 않았어요. 그냥 나갈까요?")
+                    .setPositiveButton("나가기") { _, _ ->
+                        web.evaluateJavascript("window.__dirty=false", null)
+                        action()
+                    }
+                    .setNegativeButton("계속 작성", null)
+                    .show()
+            } else action()
+        }
     }
 
     // ---------------------------------------------------------------- 열기
@@ -137,6 +163,24 @@ class MainActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQ_PICK && resultCode == RESULT_OK) {
             data?.data?.let { openDoc(it) }
+        } else if (requestCode == REQ_SAVE) {
+            val bytes = pendingSave
+            pendingSave = null
+            val uri = data?.data
+            if (resultCode != RESULT_OK || uri == null || bytes == null) {
+                web.evaluateJavascript("window.onSaved && onSaved(false)", null)
+                return
+            }
+            try {
+                contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes) }
+                    ?: throw IOException("no stream")
+                web.evaluateJavascript("window.onSaved && onSaved(true)", null)
+                toast("저장했어요")
+                openDoc(uri)
+            } catch (e: Exception) {
+                web.evaluateJavascript("window.onSaved && onSaved(false)", null)
+                toast("저장하지 못했어요")
+            }
         }
     }
 
@@ -321,6 +365,8 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun setDoc(id: String, name: String) = runOnUiThread {
             pageView.text = ""
+            editBtn.visibility = View.GONE
+            editBtn.imageTintList = null
             if (id.isEmpty()) {
                 currentUri = null
                 titleView.text = getString(R.string.app_name)
@@ -331,6 +377,34 @@ class MainActivity : Activity() {
                 titleView.text = name
                 homeBtn.visibility = View.VISIBLE
                 shareBtn.visibility = if (currentUri != null) View.VISIBLE else View.GONE
+            }
+        }
+
+        @JavascriptInterface
+        fun setFillable(yes: Boolean) = runOnUiThread {
+            editBtn.visibility = if (yes) View.VISIBLE else View.GONE
+        }
+
+        @JavascriptInterface
+        fun setFillMode(active: Boolean) = runOnUiThread {
+            editBtn.imageTintList = if (active) ColorStateList.valueOf(0xFF2F6BFF.toInt()) else null
+        }
+
+        @JavascriptInterface
+        fun saveFile(name: String, mime: String, base64: String) = runOnUiThread {
+            try {
+                pendingSave = Base64.decode(base64, Base64.DEFAULT)
+                val i = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = mime
+                    putExtra(Intent.EXTRA_TITLE, name)
+                }
+                @Suppress("DEPRECATION")
+                startActivityForResult(i, REQ_SAVE)
+            } catch (e: Exception) {
+                pendingSave = null
+                toast("저장 창을 열 수 없어요")
+                web.evaluateJavascript("window.onSaved && onSaved(false)", null)
             }
         }
 

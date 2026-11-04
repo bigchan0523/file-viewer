@@ -24,6 +24,9 @@ function showError(msg, err) {
   showStatus(`<div class="big">😵</div><div>${esc(msg)}</div>${detail}`);
 }
 
+// 채우기 기능이 쓰는 현재 문서 정보
+const D = window.__D = { kind: null, name: docName, orig: null, pdf: null, hwp: null, slots: [], W: 0 };
+
 const extOf = (name) => (name.match(/\.([a-z0-9]+)$/i)?.[1] || '').toLowerCase();
 
 // =================================================================== 처음 화면
@@ -210,10 +213,13 @@ function makeSlots(n, W, ratio) {
     el.className = 'page';
     el.style.width = W + 'px';
     el.style.height = Math.round(W * ratio) + 'px';
+    el.innerHTML = '<div class="pc"></div><div class="ann"></div>';
     frag.appendChild(el);
-    slots.push({ el, n: i, state: 0, gen: 0 });
+    slots.push({ el, pc: el.firstChild, ann: el.lastChild, n: i, state: 0, gen: 0 });
   }
   pagesEl.appendChild(frag);
+  D.slots = slots;
+  D.W = W;
   return slots;
 }
 
@@ -223,8 +229,10 @@ async function openPdf(data) {
   const pdfjs = await import('./vendor/pdfjs/pdf.js');
   pdfjs.GlobalWorkerOptions.workerSrc = new URL('vendor/pdfjs/pdf.worker.js', location.href).href;
 
+  D.kind = 'pdf';
+  D.orig = data.slice();
   const task = pdfjs.getDocument({
-    data,
+    data: data.slice(),
     cMapUrl: new URL('vendor/pdfjs/cmaps/', location.href).href,
     cMapPacked: true,
     standardFontDataUrl: new URL('vendor/pdfjs/standard_fonts/', location.href).href,
@@ -238,6 +246,7 @@ async function openPdf(data) {
     else giveBack(pw);
   };
   const pdf = await task.promise;
+  D.pdf = pdf;
 
   const first = await pdf.getPage(1);
   const v1 = first.getViewport({ scale: 1 });
@@ -267,7 +276,7 @@ async function openPdf(data) {
       s.task = page.render({ canvasContext: c.getContext('2d'), viewport: vp });
       await s.task.promise;
       if (gen !== s.gen || s.state !== 1) { c.width = c.height = 0; return; }
-      s.el.replaceChildren(c);
+      s.pc.replaceChildren(c);
       s.canvas = c;
       s.state = 2;
     } catch (e) {
@@ -281,12 +290,13 @@ async function openPdf(data) {
     s.gen++;
     try { s.task?.cancel(); } catch {}
     if (s.canvas) { s.canvas.width = s.canvas.height = 0; s.canvas = null; }
-    s.el.replaceChildren();
+    s.pc.replaceChildren();
     s.state = 0;
   }
 
   lazyPages(slots, render, release);
   trackPages(slots);
+  A.setFillable?.(true);
 }
 
 // =================================================================== HWP / HWPX
@@ -346,6 +356,8 @@ function mountSvg(el, str, n) {
 async function openHwp(buf) {
   const m = await loadRhwp();
   const doc = new m.HwpDocument(buf);
+  D.kind = 'hwp';
+  D.hwp = doc;
   const W = pageWidth();
 
   // 첫 페이지로 비율 파악
@@ -361,7 +373,7 @@ async function openHwp(buf) {
   }
 
   const slots = makeSlots(n, W, ratio);
-  slots[0].el.replaceChildren(...probe.childNodes);
+  slots[0].pc.replaceChildren(...probe.childNodes);
   slots[0].state = 2;
   hideStatus();
 
@@ -373,12 +385,12 @@ async function openHwp(buf) {
     if (!s) { running = false; return; }
     if (s.state === 1) {
       try {
-        const sz = mountSvg(s.el, doc.renderPageSvg(s.n - 1), s.n);
+        const sz = mountSvg(s.pc, doc.renderPageSvg(s.n - 1), s.n);
         if (sz) s.el.style.height = Math.round(W * sz.h / sz.w) + 'px';
         s.state = 2;
       } catch (e) {
         console.error(e);
-        s.el.innerHTML = `<div class="empty">${s.n}쪽을 그리지 못했어요</div>`;
+        s.pc.innerHTML = `<div class="empty">${s.n}쪽을 그리지 못했어요</div>`;
         s.state = 2;
       }
     }
@@ -392,12 +404,13 @@ async function openHwp(buf) {
   };
   const release = (s) => {
     if (!s.state) return;
-    s.el.replaceChildren();
+    s.pc.replaceChildren();
     s.state = 0;
   };
 
   lazyPages(slots, render, release);
   trackPages(slots);
+  A.setFillable?.(true);
 }
 
 // =================================================================== 텍스트
@@ -589,6 +602,16 @@ async function openSheet(buf, kind) {
   draw();
   hideStatus();
 }
+
+// =================================================================== 서류 채우기
+
+let fillMod = null;
+window.toggleFill = async () => {
+  try {
+    fillMod ||= await import('./fill.js');
+    fillMod.toggle(D, A);
+  } catch (e) { showError('채우기 기능을 열지 못했어요.', e); }
+};
 
 // =================================================================== 시작
 
