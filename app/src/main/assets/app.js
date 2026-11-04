@@ -545,7 +545,7 @@ function openText(buf) {
     A.setFillMode?.(false);
   };
   D.toggleEdit = () => {
-    if (ta) { if (window.__dirty && !confirm('저장 안 한 내용이 사라져요. 그만 고칠까요?')) return; window.__dirty = false; exitEdit(); return; }
+    if (ta) { if (window.__dirty && !confirm('저장 안 한 내용이 사라져요. 수정을 종료할까요?')) return; window.__dirty = false; exitEdit(); return; }
     ta = document.createElement('textarea');
     ta.className = 'textedit';
     ta.value = text;
@@ -555,7 +555,7 @@ function openText(buf) {
     ta.addEventListener('input', () => { window.__dirty = true; grow(); });
     box.hidden = true; more.hidden = true;
     box.after(ta);
-    ebar = editBar([['cancel', '그만 고치기'], ['save', '저장', 'save']], (a) => {
+    ebar = editBar([['cancel', '수정 종료'], ['save', '저장', 'save']], (a) => {
       if (a === 'cancel') D.toggleEdit();
       else if (a === 'save') {
         saveBytes(encodeText(ta.value, D.enc), { name: docName || '메모.txt', mime: 'text/plain', overwrite: true });
@@ -772,7 +772,7 @@ async function openSheet(buf, kind) {
   let ebar = null;
   D.toggleEdit = () => {
     if (editing) {
-      if (window.__dirty && !confirm('저장 안 한 내용이 사라져요. 그만 고칠까요?')) return;
+      if (window.__dirty && !confirm('저장 안 한 내용이 사라져요. 수정을 종료할까요?')) return;
       if (window.__dirty) { location.reload(); return; } // 고친 내용 버리기
       editing = false; ebar?.remove(); ebar = null;
       document.body.classList.remove('editing');
@@ -781,7 +781,7 @@ async function openSheet(buf, kind) {
     editing = true;
     document.body.classList.add('editing');
     A.setFillMode?.(true);
-    ebar = editBar([['cancel', '그만 고치기'], ['save', '저장', 'save']], (a) => {
+    ebar = editBar([['cancel', '수정 종료'], ['save', '저장', 'save']], (a) => {
       if (a === 'cancel') D.toggleEdit();
       else if (a === 'save') saveSheet();
     });
