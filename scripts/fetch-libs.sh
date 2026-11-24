@@ -132,5 +132,24 @@ rm -rf "$STUDIO_OUT"
   du -sh "$STUDIO_OUT" 2>&1
 )
 
+# ---------- 워드 편집기: SuperDoc (AGPL-3.0) ----------
+(
+  set +e
+  SD="$(mktemp -d)"; cd "$SD"
+  npm init -y >/dev/null
+  npm install --no-audit --no-fund superdoc >/dev/null 2>&1
+  P=node_modules/superdoc
+  echo "===== superdoc $(node -p "require('./$P/package.json').version") ====="
+  ls "$P" "$P/dist-cdn" 2>&1 | head -40
+  mkdir -p "$OUT/superdoc"
+  if [ -d "$P/dist-cdn" ]; then cp -r "$P/dist-cdn/." "$OUT/superdoc/"; else cp -r "$P/dist/." "$OUT/superdoc/"; fi
+  cp "$P/LICENSE"* "$OUT/superdoc/" 2>/dev/null
+  echo "--- files"; find "$OUT/superdoc" -type f | sed "s#$OUT/##" | head -40
+  du -sh "$OUT/superdoc"
+  echo "--- external urls"; grep -ohE "https://[a-zA-Z0-9./_-]+\.(woff2?|ttf|css|js|wasm)" -r "$OUT/superdoc" | sort -u | head -20
+  echo "--- export opts"; grep -ohE ".{0,80}triggerDownload.{0,120}" -r "$OUT/superdoc" | head -5
+  cd / && rm -rf "$SD"
+)
+
 echo "===== vendor size ====="
 du -sh "$OUT"/*
