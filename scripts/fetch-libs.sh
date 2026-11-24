@@ -132,33 +132,21 @@ rm -rf "$STUDIO_OUT"
   du -sh "$STUDIO_OUT" 2>&1
 )
 
-# ---------- 워드 편집기: SuperDoc (AGPL-3.0) ----------
+# ---------- 워드 편집기 후보: eigenpal docx-editor (조사) ----------
 (
   set +e
-  SD="$(mktemp -d)"; cd "$SD"
+  EG="$(mktemp -d)"; cd "$EG"
   npm init -y >/dev/null
-  npm install --no-audit --no-fund superdoc >/dev/null 2>&1
-  P=node_modules/superdoc
-  echo "===== superdoc $(node -p "require('./$P/package.json').version") ====="
-  ls "$P" "$P/dist-cdn" 2>&1 | head -40
-  mkdir -p "$OUT/superdoc"
-  if [ -d "$P/dist-cdn" ]; then cp -r "$P/dist-cdn/." "$OUT/superdoc/"; else cp -r "$P/dist/." "$OUT/superdoc/"; fi
-  cp "$P/LICENSE"* "$OUT/superdoc/" 2>/dev/null
-  # 편집 엔진(@superdoc/docx-engine)도 앱 안에 넣음 — 원래는 실행할 때 인터넷(CDN)에서 받아옴
-  EV="$(grep -oE 'docx-engine@[0-9][0-9a-z.-]*' -r "$OUT/superdoc/superdoc.min.js" | head -1 | cut -d@ -f2)"
-  [ -n "$EV" ] || EV="$(node -p "(require('./$P/package.json').dependencies||{})['@superdoc/docx-engine']||''" | tr -d '^~')"
-  [ -n "$EV" ] || EV="$(node -p "require('./node_modules/@superdoc/docx-engine/package.json').version" 2>/dev/null)"
-  echo "docx-engine version: $EV"
-  npm install --no-audit --no-fund "@superdoc/docx-engine@$EV" >/dev/null 2>&1
-  mkdir -p "$OUT/sd-engine"
-  cp -r node_modules/@superdoc/docx-engine/dist-cdn "$OUT/sd-engine/"
-  ls -la "$OUT/sd-engine/dist-cdn" | head
-  echo "--- engine external urls"; grep -ohE "https://cdn[a-zA-Z0-9./@_-]+" -r "$OUT/sd-engine" | sort -u | head
-  echo "--- files"; find "$OUT/superdoc" -type f | sed "s#$OUT/##" | head -40
-  du -sh "$OUT/superdoc"
-  echo "--- external urls"; grep -ohE "https://[a-zA-Z0-9./_-]+\.(woff2?|ttf|css|js|wasm)" -r "$OUT/superdoc" | sort -u | head -20
-  echo "--- export opts"; grep -ohE ".{0,80}triggerDownload.{0,120}" -r "$OUT/superdoc" | head -5
-  cd / && rm -rf "$SD"
+  npm install --no-audit --no-fund --legacy-peer-deps @eigenpal/docx-editor-react react react-dom >/dev/null 2>&1
+  for P in node_modules/@eigenpal/*; do
+    echo "===== $P"; node -e "const p=require('./$P/package.json'); console.log(p.version, p.license, JSON.stringify(p.peerDependencies), JSON.stringify(p.exports && Object.keys(p.exports)))"
+  done
+  R=node_modules/@eigenpal/docx-editor-react
+  echo "--- files"; find $R -maxdepth 2 | head -30
+  echo "--- ref methods"; grep -rhoE "(save|getDocument|toBlob|exportDocx|getDocx|save[A-Za-z]*)\??\([^)]{0,60}\)\s*:\s*[^;]{0,60}" $R --include=*.d.ts | sort -u | head -30
+  echo "--- props"; grep -rhoE "^\s+(documentBuffer|document|onChange|onSave|showToolbar|readOnly|mode|initialZoom|toolbar[A-Za-z]*|locale|i18n)\??:[^;]{0,80}" $R --include=*.d.ts | sort -u | head -30
+  echo "--- urls"; grep -rhoE "https://[a-zA-Z0-9./_-]+" node_modules/@eigenpal --include=*.js --include=*.mjs | sort -u | head -20
+  cd / && rm -rf "$EG"
 )
 
 echo "===== vendor size ====="
