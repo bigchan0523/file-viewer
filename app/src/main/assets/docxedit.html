@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>워드 편집</title>
-<link rel="stylesheet" href="vendor/superdoc/superdoc.min.css">
+<link rel="stylesheet" href="vendor/docxeditor/styles.css">
+<link rel="stylesheet" href="vendor/docxeditor/editor.css">
 <style>
   :root { --ink:#1d2129; --sub:#6b7280; --accent:#2f6bff; }
   html, body { margin:0; height:100%; overflow:hidden; background:#eef0f3; color:var(--ink);
@@ -14,9 +15,11 @@
   #ebar button { border:0; border-radius:10px; padding:8px 12px; font-family:inherit; font-size:14.5px; background:rgba(255,255,255,.16); color:#fff; }
   #ebar .grow { flex:1; min-width:0; font-size:13px; opacity:.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   #ebar .save { background:#fff; color:var(--accent); font-weight:700; }
-  #tb { flex:none; overflow-x:auto; background:#fff; border-bottom:1px solid #e3e6ea; -webkit-overflow-scrolling:touch; }
-  #tb > * { min-width:max-content; }
-  #editor { flex:1; min-height:0; position:relative; overflow:auto; background:#eef0f3; -webkit-overflow-scrolling:touch; }
+  #editor { flex:1; min-height:0; position:relative; display:flex; flex-direction:column; }
+  #editor > div { flex:1; min-height:0; }
+  /* 폰 화면: 페이지 영역의 고정 최소 너비(944px) 풀기 */
+  #editor .docx-editor__scroll-container [style*="min-width"] { min-width:0 !important; }
+  #editor .docx-editor__scroll-container > div { min-width:0 !important; }
 
   #sheet { position:fixed; inset:0; z-index:30; background:rgba(0,0,0,.4); display:flex; align-items:flex-end; }
   #sheet .box { width:100%; background:#fff; border-radius:18px 18px 0 0; padding:8px 0 14px; max-height:80vh; overflow:auto; }
@@ -49,14 +52,11 @@
   <button id="bDone">수정 종료</button>
   <button id="bSave" class="save">저장</button>
 </div>
-<div id="tb"></div>
 <div id="editor"></div>
 <div id="sheet" hidden></div>
 <div id="info" hidden></div>
 <div id="busy"><div class="spinner"></div><div id="busyText">편집기 여는 중…</div></div>
 <div id="toast" hidden></div>
-<script>globalThis.SUPERDOC_ENGINE_CDN_BASE_URL = new URL('vendor/sd-engine', location.href).href;</script>
-<script src="vendor/superdoc/superdoc.min.js"></script>
 <script type="module" src="docxedit.js"></script>
 </body>
 </html>

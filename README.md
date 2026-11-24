@@ -31,3 +31,4 @@
 - [docx-preview](https://github.com/VolodymyrBaydalka/docxjs) — Apache-2.0
 - [pptx-renderer](https://www.npmjs.com/package/@aiden0z/pptx-renderer) — Apache-2.0
 - rhwp-studio / @rhwp/editor — MIT
+- [docx-editor](https://github.com/eigenpal/docx-editor) (워드 편집) — Apache-2.0

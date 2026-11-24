@@ -1,4 +1,4 @@
-// 워드(docx) 편집 모드 — SuperDoc 편집기 + 저장·내보내기 메뉴
+// 워드(docx) 편집 모드 — eigenpal docx-editor(Apache-2.0) + 저장·내보내기 메뉴
 const q = new URLSearchParams(location.search);
 const docId = q.get('doc');
 const name = q.get('name') || '문서.docx';
@@ -31,38 +31,42 @@ A.setFillable(true);
 A.setFillMode(true);
 window.toggleFill = () => leave();
 
+let ref = null;
 try {
   const buf = await (await fetch('/doc/' + docId)).arrayBuffer();
   origSize = buf.byteLength;
-  const file = new File([buf], name.endsWith('.docx') ? name : base + '.docx', { type: DOCX });
-  const Lib = window.SuperDoc;
-  const Ctor = Lib.SuperDoc || Lib.default || Lib;
+  const { mountDocxEditor } = await import('./vendor/docxeditor/editor.js');
+  const W = document.documentElement.clientWidth;
   await new Promise((resolve, reject) => {
     const to = setTimeout(() => reject(new Error('편집기 시작 시간 초과')), 60000);
-    sd = new Ctor({
-      selector: '#editor',
-      toolbar: '#tb',
-      document: file,
-      documentMode: 'editing',
-      title: base,
-      user: { name: '나', email: 'me@local' },
-      onReady: () => { clearTimeout(to); resolve(); },
-      onEditorUpdate: () => { if (ready) setDirty(true); },
-      onContentError: (e) => { clearTimeout(to); reject(e?.error || e); },
-      onException: (e) => console.warn('superdoc', e),
+    ref = mountDocxEditor($('#editor'), {
+      documentBuffer: buf,
+      author: '나',
+      showToolbar: true,
+      showFileOpen: false,
+      showHelpMenu: false,
+      showRuler: false,
+      initialZoom: Math.max(0.35, Math.min(1, (W - 16) / 816)),
+      onChange: () => { if (ready) setDirty(true); },
+      onError: (e) => { clearTimeout(to); reject(e); },
     });
+    const poll = setInterval(() => {
+      try { if (ref.current && ref.current.getDocument()) { clearInterval(poll); clearTimeout(to); resolve(); } } catch {}
+    }, 200);
   });
+  sd = ref.current;
   window.__sd = sd;
   busy('');
-  setTimeout(() => { ready = true; }, 500);
-  // 입력이 생기면 "저장 안 됨" (onEditorUpdate 가 안 오는 경우 대비)
+  setTimeout(() => { ready = true; }, 800);
   for (const ev of ['beforeinput', 'paste', 'cut', 'drop', 'compositionend'])
     $('#editor').addEventListener(ev, () => { if (ready) setDirty(true); }, true);
 } catch (e) { failed(e); }
 
 async function docxBytes() {
-  const blob = await sd.export({ exportType: ['docx'], exportedName: base, triggerDownload: false });
-  return new Uint8Array(await blob.arrayBuffer());
+  let ab = await ref.current.save();
+  if (!ab) ab = await ref.current.save({ selective: false });
+  if (!ab) throw new Error('워드 파일을 만들지 못했어요');
+  return new Uint8Array(ab);
 }
 
 // PDF: 화면에 그려진 페이지를 그림으로 떠서 합침
@@ -71,7 +75,7 @@ const loadScript = (src) => new Promise((res, rej) => { const s = document.creat
 async function makePdf() {
   if (!window.PDFLib) await loadScript('vendor/pdflib/pdf-lib.min.js');
   h2i ||= await import('./vendor/office/entry-h2i.js');
-  const pages = [...document.querySelectorAll('#editor .superdoc-page, #editor [data-page-number], #editor .pagination-page')]
+  const pages = [...document.querySelectorAll('#editor [data-page-number], #editor .layout-page, #editor .docx-page, #editor [class*="page-"][style*="height"]')]
     .filter((el, i, arr) => !arr.some((o) => o !== el && o.contains(el)));
   const targets = pages.length ? pages : [document.querySelector('#editor .ProseMirror') || $('#editor')];
   const out = await PDFLib.PDFDocument.create();
@@ -110,7 +114,7 @@ const actions = {
   sharePdf: () => run('PDF 만드는 중…', async () => { A.shareFile(base + '.pdf', 'application/pdf', toB64(await makePdf())); done(); }),
   print: () => run('인쇄 준비 중…', async () => { A.printPdf(base, toB64(await makePdf())); done(); }),
   info: () => {
-    const pages = document.querySelectorAll('#editor .superdoc-page, #editor [data-page-number]').length || '?';
+    let pages = '?'; try { pages = sd.getTotalPages(); } catch {}
     const kb = (n) => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
     $('#info').innerHTML = `<div class="box"><h3>문서 정보</h3><table><tr><td>파일 이름</td><td></td></tr><tr><td>형식</td><td>DOCX</td></tr><tr><td>쪽 수</td><td>${pages}</td></tr><tr><td>원본 크기</td><td>${kb(origSize)}</td></tr><tr><td>상태</td><td>${dirty ? '저장 안 된 수정 있음' : '수정 없음 / 저장됨'}</td></tr></table><button>닫기</button></div>`;
     $('#info td:nth-child(2)').textContent = name;
