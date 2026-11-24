@@ -132,20 +132,36 @@ rm -rf "$STUDIO_OUT"
   du -sh "$STUDIO_OUT" 2>&1
 )
 
-# ---------- 워드 편집기 후보: eigenpal docx-editor (조사) ----------
+# ---------- 워드 편집기: eigenpal docx-editor (Apache-2.0) — React 포함해 한 파일로 묶음 ----------
 (
   set +e
   EG="$(mktemp -d)"; cd "$EG"
   npm init -y >/dev/null
-  npm install --no-audit --no-fund --legacy-peer-deps @eigenpal/docx-editor-react react react-dom >/dev/null 2>&1
-  for P in node_modules/@eigenpal/*; do
-    echo "===== $P"; node -e "const p=require('./$P/package.json'); console.log(p.version, p.license, JSON.stringify(p.peerDependencies), JSON.stringify(p.exports && Object.keys(p.exports)))"
-  done
+  npm install --no-audit --no-fund --legacy-peer-deps @eigenpal/docx-editor-react react@18 react-dom@18 esbuild >/dev/null 2>&1
   R=node_modules/@eigenpal/docx-editor-react
-  echo "--- files"; find $R -maxdepth 2 | head -30
-  echo "--- ref methods"; grep -rhoE "(save|getDocument|toBlob|exportDocx|getDocx|save[A-Za-z]*)\??\([^)]{0,60}\)\s*:\s*[^;]{0,60}" $R --include=*.d.ts | sort -u | head -30
-  echo "--- props"; grep -rhoE "^\s+(documentBuffer|document|onChange|onSave|showToolbar|readOnly|mode|initialZoom|toolbar[A-Za-z]*|locale|i18n)\??:[^;]{0,80}" $R --include=*.d.ts | sort -u | head -30
-  echo "--- urls"; grep -rhoE "https://[a-zA-Z0-9./_-]+" node_modules/@eigenpal --include=*.js --include=*.mjs | sort -u | head -20
+  echo "===== eigenpal $(node -p "require('./$R/package.json').version")"
+  cat > entry.jsx <<'JSX'
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { DocxEditor } from '@eigenpal/docx-editor-react';
+export function mountDocxEditor(el, props) {
+  const ref = React.createRef();
+  createRoot(el).render(React.createElement(DocxEditor, { ref, ...props }));
+  return ref;
+}
+JSX
+  mkdir -p "$OUT/docxeditor"
+  npx esbuild entry.jsx --bundle --format=esm --minify --target=es2020 --outfile="$OUT/docxeditor/editor.js" \
+    --define:process.env.NODE_ENV='"production"' --loader:.woff2=dataurl --loader:.woff=dataurl --loader:.ttf=dataurl --loader:.svg=dataurl --loader:.png=dataurl \
+    || echo "esbuild failed"
+  CSS="$(node -p "try{require.resolve('@eigenpal/docx-editor-react/styles.css')}catch(e){''}")"
+  [ -n "$CSS" ] && cp "$CSS" "$OUT/docxeditor/styles.css"
+  cp $R/LICENSE "$OUT/docxeditor/" 2>/dev/null
+  ls -la "$OUT/docxeditor"
+  echo "--- DocxEditorRef"
+  grep -rhA40 "interface DocxEditorRef" $R/dist --include=*.d.ts | head -60
+  echo "--- DocxEditorProps"
+  grep -rhA80 "interface DocxEditorProps" $R/dist --include=*.d.ts | grep -E "^\s+[a-zA-Z]+\??:" | head -60
   cd / && rm -rf "$EG"
 )
 
