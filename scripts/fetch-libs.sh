@@ -144,6 +144,16 @@ rm -rf "$STUDIO_OUT"
   mkdir -p "$OUT/superdoc"
   if [ -d "$P/dist-cdn" ]; then cp -r "$P/dist-cdn/." "$OUT/superdoc/"; else cp -r "$P/dist/." "$OUT/superdoc/"; fi
   cp "$P/LICENSE"* "$OUT/superdoc/" 2>/dev/null
+  # 편집 엔진(@superdoc/docx-engine)도 앱 안에 넣음 — 원래는 실행할 때 인터넷(CDN)에서 받아옴
+  EV="$(grep -oE 'docx-engine@[0-9][0-9a-z.-]*' -r "$OUT/superdoc/superdoc.min.js" | head -1 | cut -d@ -f2)"
+  [ -n "$EV" ] || EV="$(node -p "(require('./$P/package.json').dependencies||{})['@superdoc/docx-engine']||''" | tr -d '^~')"
+  [ -n "$EV" ] || EV="$(node -p "require('./node_modules/@superdoc/docx-engine/package.json').version" 2>/dev/null)"
+  echo "docx-engine version: $EV"
+  npm install --no-audit --no-fund "@superdoc/docx-engine@$EV" >/dev/null 2>&1
+  mkdir -p "$OUT/sd-engine"
+  cp -r node_modules/@superdoc/docx-engine/dist-cdn "$OUT/sd-engine/"
+  ls -la "$OUT/sd-engine/dist-cdn" | head
+  echo "--- engine external urls"; grep -ohE "https://cdn[a-zA-Z0-9./@_-]+" -r "$OUT/sd-engine" | sort -u | head
   echo "--- files"; find "$OUT/superdoc" -type f | sed "s#$OUT/##" | head -40
   du -sh "$OUT/superdoc"
   echo "--- external urls"; grep -ohE "https://[a-zA-Z0-9./_-]+\.(woff2?|ttf|css|js|wasm)" -r "$OUT/superdoc" | sort -u | head -20

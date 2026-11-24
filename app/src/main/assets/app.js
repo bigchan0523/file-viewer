@@ -842,7 +842,7 @@ async function openDocx(buf) {
     el.appendChild(ann);
     return { el, ann, n: i + 1 };
   });
-  // 워드 진짜 편집은 아직 → 연필 숨김
+  A.setFillable?.(true); // 연필 → 워드 편집 모드
 }
 
 // =================================================================== PPT (pptx) — 보기 전용
@@ -882,6 +882,7 @@ let fillMod = null;
 window.toggleFill = async () => {
   if (D.toggleEdit) { D.toggleEdit(); return; }
   // 한글: 진짜 편집 모드(편집기 화면)로
+  if (D.kind === 'docx') { location.href = `docxedit.html?doc=${encodeURIComponent(docId)}&name=${encodeURIComponent(docName)}`; return; }
   if (D.kind === 'hwp') { location.href = `hwpedit.html?doc=${encodeURIComponent(docId)}&name=${encodeURIComponent(docName)}`; return; }
   try {
     fillMod ||= await import('./fill.js');
