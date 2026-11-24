@@ -137,7 +137,7 @@ rm -rf "$STUDIO_OUT"
   set +e
   EG="$(mktemp -d)"; cd "$EG"
   npm init -y >/dev/null
-  npm install --no-audit --no-fund --legacy-peer-deps @eigenpal/docx-editor-react react@18 react-dom@18 esbuild >/dev/null 2>&1
+  npm install --no-audit --no-fund --legacy-peer-deps @eigenpal/docx-editor-react react@18 react-dom@18 esbuild prosemirror-commands prosemirror-dropcursor prosemirror-history prosemirror-keymap prosemirror-model prosemirror-state prosemirror-tables prosemirror-transform prosemirror-view >/dev/null 2>&1
   R=node_modules/@eigenpal/docx-editor-react
   echo "===== eigenpal $(node -p "require('./$R/package.json').version")"
   cat > entry.jsx <<'JSX'
